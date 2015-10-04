@@ -1,7 +1,7 @@
 # Try and Except Statements
 
 ### 1. Specific errors
-[try_except_specific.py](https://github.com/byam/Byam-Programming-Notes/blob/master/python-note/Sources/try_except_specific.py):
+try_except_specific.py:
 
 ```python
 def Division100(x):
@@ -25,7 +25,7 @@ Error is just occured HERE.
 ```
 
 ### 2. If any error occurs, save the all errors to file
-[try_except_any.py](https://github.com/byam/Byam-Programming-Notes/blob/master/python-note/Sources/try_except_any.py):
+try_except_any.py:
 
 ```python
 import traceback
@@ -52,7 +52,7 @@ Division200(0)
 
 Implementation:
 
-```sh
+```shell
 $  tipsPython  python try_except.py
 20
 18
@@ -72,7 +72,7 @@ ZeroDivisionError: integer division or modulo by zero
 
 ### 3. Raise Exception
 
-[try_except_raise.py](https://github.com/byam/Byam-Programming-Notes/blob/master/python-note/Sources/try_except_any.py):
+try_except_raise.py:
 
 ```python
 import traceback
