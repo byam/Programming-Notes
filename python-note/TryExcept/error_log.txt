@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "try_except.py", line 7, in Division200
+    raise Exception("x is not Even number.")
+Exception: x is not Even number.
+Traceback (most recent call last):
+  File "try_except.py", line 9, in Division200
+    ans = 200 / x
+ZeroDivisionError: integer division or modulo by zero
