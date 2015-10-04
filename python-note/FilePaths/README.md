@@ -1,5 +1,3 @@
-# File Paths
-
 ## File Paths
 
 ```python
@@ -10,7 +8,7 @@
 >>> os.path.join('path', 'to', 'file.png')
 'path/to/file.png'
 
-# seperater
+# separator
 >>> os.sep
 '/'
 
@@ -29,8 +27,8 @@
 Abosolute Path is always related to root folder. ex: `/Users/Bya`
 
 Relavative Path is always related to current folder. 
-    * '.' is current directory
-    * '..' is parrent directory
+* '.' is current directory
+* '..' is parrent directory
 
 ```python
 >>> import os
@@ -55,7 +53,7 @@ False
 'Pythons/file.py'
 ```
 
-### Useful commands
+## Useful commands
 
 ```python 
 # Get directory name
