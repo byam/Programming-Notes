@@ -10,4 +10,6 @@
 
 * [Deleting Files and Folders](https://github.com/byam/Byam-Programming-Notes/blob/master/python-note/Delete)
 
+** [Logging](https://github.com/byam/Byam-Programming-Notes/blob/master/python-note/Logging)
+
 * [Walking a Directory Tree](https://github.com/byam/Byam-Programming-Notes/blob/master/python-note/DirectoryTree)
