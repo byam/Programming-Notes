@@ -28,6 +28,21 @@ $ python3 parsingHTML.py
 The price is $22.86
 ```
 
+## Get England Premiear League's all match results
+```python
+>>> import bs4
+>>> import requests
+>>> url = 'http://www.soccerstats.com/results.asp?league=england_2014'
+>>> res = requests.get(url)
+>>> res.status_code
+200
+>>> soup = bs4.BeautifulSoup(res.text, 'html.parser')
+>>> tag_ids = soup.findAll('tr', {"class": "odd"})
+>>> len(tag_ids)
+380
+>>> tag_ids[0].text.strip()
+'Sat. 17 Aug. \n11:45\n\xa0Liverpool - Stoke City\n\n1-0\n\n\r\n(1-0)'
+```
 
 ### Summary
 ![alt text][file_paths]
