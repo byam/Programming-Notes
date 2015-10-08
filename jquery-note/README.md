@@ -6,4 +6,4 @@
 
 * [jQuery Events](https://github.com/byam/Byam-Programming-Notes/blob/master/jquery-note/jQueryEvents)
 
-* [jQuery Efects](https://github.com/byam/Byam-Programming-Notes/blob/master/jquery-note/jQueryEfects)
+* [jQuery Efects](https://github.com/byam/Byam-Programming-Notes/blob/master/jquery-note/jQueryEffects)
