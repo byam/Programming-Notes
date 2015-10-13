@@ -233,6 +233,8 @@ Apostle's Creed"""
 
 
 ## Regex Begin and End Matchings. (Dot-Star and Caret/Dollar Characters)
+
+### Begin and End
 ```python
 # begin
 >>> beginRegex = re.compile(r'^Hello')
@@ -256,7 +258,11 @@ True
 >>> beginEndRegex.search("12313213213213 asdasd") == None
 True
 
+```
 
+
+### Dot-Star
+```python
 # '.' means any characters, excepts newline
 >>> atRegex = re.compile(r'.at')
 >>> atRegex.findall("Hat cat flat spot")
@@ -272,6 +278,98 @@ True
 >>> nameRegex.findall("firstname: Ganbaatar, lastname: Byambasuren")
 [('Ganbaatar', 'Byambasuren')]
 
+# Except newline
+>>> text = "This is Bya.\nHello guys.\nNice to meet you"
+>>> print(text)
+This is Bya.
+Hello guys.
+Nice to meet you
+>>> dotStarRegex = re.compile(r'.*')
+>>> dotStarRegex.search(text)
+<_sre.SRE_Match object; span=(0, 12), match='This is Bya.'>
 
+# include newline
+>>> dotStarNewLineRegex = re.compile(r'.*', re.DOTALL)
+>>> dotStarNewLineRegex.search(text)
+<_sre.SRE_Match object; span=(0, 41), match='This is Bya.\nHello guys.\nNice to meet you'>
+
+
+# case sensetive
+>>> vowelRegex = re.compile(r'[aeiou]')
+>>> vowelRegex.findall("Yeah, Apple is good.")
+['e', 'a', 'e', 'i', 'o', 'o']
+
+>>> vowelRegex = re.compile(r'[aeiou]', re.IGNORECASE)
+>>> vowelRegex.findall("Yeah, Apple is good.")
+['e', 'a', 'A', 'e', 'i', 'o', 'o']
 ```
+
+### Summary
+![alt text][dotStar]
+[dotStar]: https://github.com/byam/Byam-Programming-Notes/blob/master/python-note/Regex/images/dotStar.png "dotStar"
+
+
+
+
+## Regex Replace `sub()` method and Verbose Mode
+
+### Replace `sub()` method
+```python
+>>> import re
+>>> nameRegex = re.compile(r'Agent \w+')
+>>> nameRegex.findall("Today, Agent Bya meets Agent Julie.")
+['Agent Bya', 'Agent Julie']
+
+# replace
+>>> nameRegex.sub("AGENTNAME", "Today, Agent Bya meets Agent Julie.")
+'Today, AGENTNAME meets AGENTNAME.'
+
+# first letters
+>>> nameRegex = re.compile(r'Agent (\w)\w*')
+>>> nameRegex.findall("Today, Agent Bya meets Agent Julie.")
+['B', 'J']
+>>> nameRegex.sub(r"Agent \1****", "Today, Agent Bya meets Agent Julie.")
+'Today, Agent B**** meets Agent J****.'
+```
+
+### Verbose mode
+```python
+# add comments to regex
+>>> verboseRegex = re.compile('''
+... (\d\d\d)    # 3 digits
+... (\w\w\w)    # 3 letters
+... (\s)        # 1 space
+... ''', re.VERBOSE)
+>>> verboseRegex
+re.compile('\n(\\d\\d\\d)    # 3 digits\n(\\w\\w\\w)    # 3 letters\n(\\s)        # 1 space\n', re.VERBOSE)
+>>> verboseRegex.search("The 121bya haha this is working")
+<_sre.SRE_Match object; span=(4, 11), match='121bya '>
+```
+
+### Summary
+![alt text][verbose]
+[verbose]: https://github.com/byam/Byam-Programming-Notes/blob/master/python-note/Regex/images/verbose.png "verbose"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
