@@ -19,4 +19,6 @@
 * [Advenced String Syntax](https://github.com/byam/Byam-Programming-Notes/blob/master/python-note/StringSyntax)
 
 
-* [Using Spark in Pyhon. (PySpark)](https://github.com/byam/Byam-Programming-Notes/blob/master/python-note/PySpark)
+* [Using Spark in Python. (PySpark)](https://github.com/byam/Byam-Programming-Notes/blob/master/python-note/PySpark)
+
+* [Regular Expressions in Python](https://github.com/byam/Byam-Programming-Notes/blob/master/python-note/Regex)
