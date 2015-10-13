@@ -22,4 +22,49 @@
 ### Summary
 ![alt text][basics]
 
-[basics]: https://github.com/byam/Byam-Programming-Notes/blob/master/python-note/Regex/images/basics.png=200x150
+[basics]: https://github.com/byam/Byam-Programming-Notes/blob/master/python-note/Regex/images/basics.png "Basics"
+
+
+## Regex Groups and the Pipe Character
+
+### Group
+```python
+# create groups
+>>> import re
+>>> phoneNumRegex = re.compile(r'(\d\d\d)-(\d\d\d\d)-\d\d\d\d')
+>>> text = "My phone number is 080-3558-0177"
+>>> mo = phoneNumRegex.search(text)
+>>> mo.group()
+'080-3558-0177'
+>>> mo.group(1)
+'080'
+>>> mo.group(2)
+'3558'
+
+
+# escape group
+>>> phoneNumRegex = re.compile(r'\(\d\d\d\) \d\d\d\d-\d\d\d\d')
+>>> text = "My phone number is (080) 3558-0177"
+>>> mo = phoneNumRegex.search(text)
+>>> mo.group()
+'(080) 3558-0177'
+```
+
+### Pipe
+```python
+>>> superRegex = re.compile(r'super(man|woman|boy|girl)')
+>>> mo = superRegex.search("Hey superboy, come here!")
+>>> mo.group()
+'superboy'
+>>> mo.group(1)
+'boy'
+>>> mo = superRegex.search("Hey supergirl, come here!")
+>>> mo.group()
+'supergirl'
+>>> mo.group(1)
+'girl'
+```
+
+### Summary
+![alt text][groupPipe]
+[groupPipe]: https://github.com/byam/Byam-Programming-Notes/blob/master/python-note/Regex/images/groupPipe.png "groupPipe"
