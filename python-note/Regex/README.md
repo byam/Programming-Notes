@@ -228,3 +228,50 @@ Apostle's Creed"""
 ### Summary
 ![alt text][findall]
 [findall]: https://github.com/byam/Byam-Programming-Notes/blob/master/python-note/Regex/images/findall.png "findall"
+
+
+
+
+## Regex Begin and End Matchings. (Dot-Star and Caret/Dollar Characters)
+```python
+# begin
+>>> beginRegex = re.compile(r'^Hello')
+>>> beginRegex.search("Hello guyes, How are you Hello")
+<_sre.SRE_Match object; span=(0, 5), match='Hello'>
+>>> beginRegex.findall("Hello guyes, How are you Hello")
+['Hello']
+
+
+# end
+>>> endRegex = re.compile(r'world!$')
+>>> endRegex.search("Hello world!")
+<_sre.SRE_Match object; span=(6, 12), match='world!'>
+>>> endRegex.search("Hello world") == None
+True
+
+# begin & end
+>>> beginEndRegex = re.compile(r'^\d+$')
+>>> beginEndRegex.search("12313213213213")
+<_sre.SRE_Match object; span=(0, 14), match='12313213213213'>
+>>> beginEndRegex.search("12313213213213 asdasd") == None
+True
+
+
+# '.' means any characters, excepts newline
+>>> atRegex = re.compile(r'.at')
+>>> atRegex.findall("Hat cat flat spot")
+['Hat', 'cat', 'lat']
+
+>>> atRegex = re.compile(r'.{1,2}at')
+>>> atRegex.findall("Hat cat flat spot")
+['Hat', ' cat', 'flat']
+
+
+# '.*' means match anything
+>>> nameRegex = re.compile(r'firstname: (.*), lastname: (.*)')
+>>> nameRegex.findall("firstname: Ganbaatar, lastname: Byambasuren")
+[('Ganbaatar', 'Byambasuren')]
+
+
+```
+
