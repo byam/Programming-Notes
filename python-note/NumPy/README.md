@@ -6,4 +6,4 @@
 
 ## Basics of Numpy
 
-[AngularJS](https://github.com/byam/Programming-Notes/tree/master/python-notes/Numpy/Intro%20Numpy.ipynb)
+[HERE](https://github.com/byam/Programming-Notes/blob/master/python-note/NumPy/Intro%20Numpy.ipynb)
