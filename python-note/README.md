@@ -22,3 +22,7 @@
 * [Using Spark in Python. (PySpark)](https://github.com/byam/Byam-Programming-Notes/blob/master/python-note/PySpark)
 
 * [Regular Expressions in Python](https://github.com/byam/Byam-Programming-Notes/blob/master/python-note/Regex)
+
+* [Mecab install in Python](https://github.com/byam/Byam-Programming-Notes/blob/master/python-note/Mecab)
+
+* [NumPy with Python](https://github.com/byam/Byam-Programming-Notes/blob/master/python-note/NumPy)
