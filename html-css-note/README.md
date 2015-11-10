@@ -1,4 +1,4 @@
-# HTML, CSS note
+# HTML note
 * [Basics](#basics)
     * [構成](#basicsKousei)
     * [属性](#basicsZokusei)
@@ -9,6 +9,8 @@
 * [リスト](#list)
 * [テーブル](#table)
 * [フォーム](#form)
+* [情報をまとめる要素](#divspan)
+* [ヘッダーとフッターをあらわす要素](#headerfooter)
 
 <a name="basics"></a>
 ## Basics
@@ -329,6 +331,7 @@ em要素を使って、文章の中で重要な部分を強調してみましょ
 input要素のtype属性を指定するとさまざまな種類のフォームの部品を作り出すことができます。
 
 * **`type="text"`**
+
 １行のテキスト入力欄を作成します。
 ```html
 <input type="text">
@@ -336,6 +339,7 @@ input要素のtype属性を指定するとさまざまな種類のフォーム�
 <input type="text">
 
 * **`type="checkbox"`**
+
 チェックボックスを作成します。複数作成することができます。
 ```html
 <input type="checkbox">
@@ -344,11 +348,249 @@ input要素のtype属性を指定するとさまざまな種類のフォーム�
 
 
 * **`type="radio"`**
+
 複数の中から１つしか選択できない、ラジオボタンを作ります。
 複数をグループとして認識させるには、name属性で同じ名前をつけます。
 ```html
 <input type="radio">
 ```
 <input type="radio">
+
+
+* **`type="submit"`**
+
+送信ボタンを作ります。
+```html
+<input type="submit">
+```
+<input type="submit">
+
+* **`name=""`**
+
+入力された情報の識別子として、固有の名前をつけることができます。
+```html
+<input type="text" name="email">
+```
+<input type="text" name="email">
+
+
+* **`value=""`**
+
+こちらはフォームの種類によって挙動が変わってくる属性になります。
+type = "button" の場合、ボタンに文字をつけることができます。
+```html
+<input type="submit" value="送信する">
+```
+<input type="submit" value="送信する">
+
+```html
+<input type="text" value="さいとう">
+```
+<input type="text" value="さいとう">
+
+
+* **`placeholder=""`**
+
+テキストなどの入力欄に文字を表示することができます。
+```html
+<input type="text" placeholder="名前を入力してください">
+```
+<input type="text" placeholder="名前を入力してください">
+
+### textarea要素
+textarea要素を使うと、複数行のテキスト入力欄を作成できます。
+
+textarea要素の中のテキストは、テキスト入力欄の初期値になります。
+
+### label要素
+label要素は、フォームの構成部品（一行テキストボックス・チェックボックス・ラジオボタン等）と、 その項目名（ラベル）を明確に関連付けるための要素です。
+
+フォームの部品とテキストを一緒にタグで囲むことにより関連付けが行われ、テキストをクリックしてもチェックボックスにチェックを入れることができるようになります。
+
+### select要素
+メニュー（セレクトボックス）を作成するときに使用します。メニューの選択肢は、select要素内に配置するoption要素で作成します。
+
+### option要素
+メニューの選択肢を作成するときに使用します。この要素内の文字列が、メニューの選択肢として表示されます。この要素は、select要素の間に記述します。
+
+```html
+<h2>お問い合わせ</h2>
+
+<form>
+  <input type="text" placeholder="名前を入力してください"><br>
+
+  <textarea placeholder="テキスト本文"></textarea><br>
+
+  <label>
+    <input type="radio" name="RadioGroup1" value="0">男性
+  </label><br>
+  <label>
+    <input type="radio" name="RadioGroup1" value="1">女性
+  </label>
+
+  アンケートにご協力ださい。
+  <label>
+  <input type="checkbox" name="CheckboxGroup1" value="チェックボックス">
+  サイトは面白かった </label>
+  <br>
+  <label>
+  <input type="checkbox" name="CheckboxGroup1" value="チェックボックス">
+  サイトは役立った </label>
+
+  <select>
+    <option value="セレクト">返信必要</option>
+    <option value="セレクト">返信不要</option>
+  </select>
+
+  <input type="submit" value="送信する">
+
+</form>
+```
+
+<h2>お問い合わせ</h2>
+
+<form>
+  <input type="text" placeholder="名前を入力してください"><br>
+  <textarea placeholder="テキスト本文"></textarea><br>
+  <label>
+    <input type="radio" name="RadioGroup1" value="0">男性
+  </label>
+  <label>
+    <input type="radio" name="RadioGroup1" value="1">女性
+  </label><br>
+
+  アンケートにご協力ださい。<br>
+  <label>
+  <input type="checkbox" name="CheckboxGroup1" value="チェックボックス">
+  サイトは面白かった </label>
+  <br>
+  <label>
+  <input type="checkbox" name="CheckboxGroup1" value="チェックボックス">
+  サイトは役立った </label><br>
+
+  <select>
+    <option value="セレクト">返信必要</option>
+    <option value="セレクト">返信不要</option>
+  </select>
+  <br>
+  <input type="submit" value="送信する">
+</form>
+
+
+<a name="divspan"></a>
+## 情報をまとめる要素
+
+HTMLのコツでも登場したdiv要素とspan要素は、情報をひと固まりにできるものです。
+どちらも、要素自体には意味を持っておらず、CSSでレイアウトや装飾をするときに使われます。
+
+#### div要素
+意味を持っている要素ではありませんが、CSSでレイアウトや装飾をするときに使うブロック要素です。div要素で囲んだ部分の配置を一気に変更することなどが可能です。
+
+#### span要素
+div要素と同じく意味を持っていませんが、文字の装飾などに使うインライン要素です。
+
+```html
+<div>
+ <h2>ゆるキャラランキング</h2>
+ <p><span>10/17</span>現在のゆるきゃらランキングです。</p>
+  <table>
+      <tr>
+        <th>順位</th>
+        <th>県</th>
+        <th>ゆるきゃら</th>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td>ぐんま</td>
+        <td>ぐんまちゃん</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>埼玉県</td>
+        <td>ふっかちゃん</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>愛媛</td>
+        <td>みっきゃん</td>
+      </tr>
+  </table>
+</div>
+```
+
+* div要素は、サイトのレイアウトや装飾をする時に使われる。
+* span要素は、サイトの文字の装飾をするときに使われる。
+
+<a name="headerfooter"></a>
+## ヘッダーとフッターをあらわす要素
+
+### header要素
+上部にあるものを示すことができます。
+はじめに紹介したhead要素と混同しがちなので気をつけてください。
+
+例えば、見出しやナビゲーションなどを囲うことによって、上部にあることがHTMLだけでわかるようになります。
+header要素は、ブロック要素となります。
+```html
+<header>
+<h1>サイト名</h1>
+<h2>ようこそ サイト名 へ</h2>
+<p>このサイトは、●●です。<br>ゆっくりしていってね！</p>
+</header>
+```
+
+### footer要素
+下部にあるものを示すことができます。
+例えば、コメント数やコピーライトを囲うことによって、下部にあることがHTMLだけでわかるようになります。
+```html
+<footer>
+<p>copyright サイト名</p>
+</footer>
+```
+
+### section要素
+文章内の1部分がひとつのセクションであることを表します。
+sectionを使用するときは、小さなまとまりの見出しとしてh要素が使われます。
+section要素は、ブロック要素となります。
+```html
+<section>
+<h3>氏名</h3>
+<p><strong>21歳</strong>です。</p>
+<p>千葉県出身で、千葉県に住んでいます。<em>よろしくお願いします！</em></p>
+</section>
+```
+
+
+### article要素
+内容が単体（article）が完結している時に使えます。
+例えば、ブログでは、複数の記事がひとつのHTMLにある場合があり、記事ごとにarticleでマークアップします。
+
+article内でarticleを使用することができますが、親要素に関連（コメントなど）している必要があります。
+
+article要素は、ブロック要素となります。
+
+```html
+<article>
+  <section>
+    <h3>氏名</h3>
+    <p><strong>21歳</strong>です。</p>
+    <p>千葉県出身で、千葉県に住んでいます。<em>よろしくお願いします！</em></p>
+  </section>
+</article>
+```
+
+* section要素は、文章がひとつのセクションとなる時使えます。
+* article要素は、内容がひとつのまとまりで完結している時に使えます。
+
+
+
+
+
+
+
+
+
+
+
+
 
 

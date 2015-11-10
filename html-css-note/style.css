@@ -1,0 +1,22 @@
+.position-static {
+  position: static;
+  background-color: #2ecc71;
+}
+.position-relative {
+  position: relative;
+  background-color: #9b59b6;
+  top: 60px;
+  left: 80px;
+}
+.position-absolute {
+  position: absolute;
+  background-color: #3498DB;
+  top: 120px;
+  left: 120px;
+}
+.position-fixed {
+  position: fixed;
+  background-color: #F1C40F;
+  top: 20px;
+  left: 20px;
+}
