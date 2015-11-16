@@ -1,0 +1,1550 @@
+#List of Rails Notes & Tips
+* [Installing Rails](#install)
+* [Create New Application](#new)
+* [Gemfileとbundle install](#bundle_install)
+* [データベースの作成](#database)
+* [ルーティング](#rooting)
+* [コントローラー](#controller)
+* [ビュー](#view)
+* [モデル](#model)
+* [コンソール](#console)
+* [ビューにデータを受け渡す](#view_data)
+* [モデルを利用してデータを表示](#model_view)
+* [フォーム](#form)
+* [ページネーション](#pagenation)
+* [ログイン機能](#login)
+* [ログイン・サインアップ画面のビューを変更](#change_login)
+* [サインアップ時にニックネームを登録](#nickname)
+* [ツイートにユーザー情報を追加する](#user_info)
+* [マイページを作成](#mypage)
+* [アソシエーションを利用する](#association)
+* [ツイート一覧画面にニックネームを表示](#nickname_view)
+* [ツイートの削除機能を追加する](#delete_tweet)
+* [ツイートの編集機能を追加する](#edit_tweet)
+
+<a name="install"></a>
+## Install Rails
+
+* rbenv と ruby-buildのインストール
+```sh
+$ brew install rbenv ruby-build
+```
+rbenvとruby-buildは、Rubyのバージョンを管理する際に組み合わせて使います。
+ruby-buildによってRubyの様々なバージョン(2.0.0など)をインストールし、rbenvを使ってそれらを切り替えます。
+
+* rbenvのパスを通す
+```sh
+$ echo 'eval "$(rbenv init -)"' >> ~/.bash_profile
+
+$ source ~/.bash_profile
+```
+
+* readlineのinstall
+
+ターミナルのirb上で日本語入力を可能にする設定を行います。
+```sh
+$ brew install readline
+
+$ brew link readline --force
+```
+
+* readlineを利用してRuby ver.2.1.3のインストール
+
+```sh
+$ RUBY_CONFIGURE_OPTS="--with-readline-dir=$(brew --prefix readline)"
+$ rbenv install 2.1.3
+```
+
+* Rubyを起動する
+```sh
+$ rbenv rehash
+
+$ rbenv global 2.1.3
+
+$ ruby -v
+```
+
+* MySQLのインストール
+```sh
+$ brew install mysql
+```
+
+* MySQLの自動起動設定
+```sh
+$ ln -sfv /usr/local/opt/mysql/*.plist ~/Library/LaunchAgents
+```
+
+* bundlerのインストール
+
+gemとは、Rubyを便利に扱うためのアプリケーションの総称です。ターミナルからそれぞれのgemが持つコマンドを実行するという形で使用します。
+
+bundlerとはgemのバージョン管理などをしてくれるgemです。
+環境ごとに使用するgemを決めたり、gemのバージョンを指定したりできます。
+```sh
+$ gem install bundler
+```
+
+* Ruby on Railsのインストール
+```sh
+$ gem install rails
+
+$ rbenv rehash
+
+$ rails -v
+```
+
+
+<a name="new"></a>
+## Create New Application
+このコマンドはRailsで新規アプリケーションを作成する際に使用します。コマンドを実行する際には作成したいアプリケーション名を最後につけて「rails new アプリケーション名」とコマンドを実行します。また、オプションを付ける場合には「-オプション名」と追記することで様々なオプションをつけることが出来ます。
+
+```sh
+$ rails new アプリケーション名
+# アプリケーションを新規作成
+
+$ rails new アプリケーション名 -オプション名
+# オプションを付けてアプリケーションを作成
+```
+
+example:
+```sh
+$ cd ~/projects
+# projectsディレクトリに移動
+$ rails new pictweet -d mysql
+# 「pictweet」を「mysql」オプションで作成
+
+$ cd pictweet
+# 「pictweet」ディレクトリに移動
+
+$ pwd
+# 現在のディレクトリのパスを表示
+```
+
+
+<a name="bundle_install"></a>
+## Gemfileとbundle install
+RailsでGemを追加するには「Gemfile」というファイルに「gem ‘Gem名’」と追記し、「bundle install」コマンドを実行する必要があります。
+
+Gemfile:
+```ruby
+gem 'Gem名'
+# Gemの追加
+```
+
+ターミナル:
+```sh
+$ bundle install
+# Gemをインストール
+```
+
+example:
+pictweet/Gemfile
+```ruby
+#7行目付近、mysql2の行を以下のように変更
+gem 'mysql2', '0.3.18'
+#9行目付近、sass-railsの行を以下のように変更
+gem 'sass-rails', '~> 4.0.2'
+#末尾に以下を追記
+gem 'pry-rails'
+gem 'compass-rails','~> 2.0'
+gem 'sprockets', '2.11.0'
+```
+
+### Install Bundle
+```ruby
+$ pwd
+# 現在のディレクトリが「/Users/ユーザー名/projects/pictweet」であることを確認
+
+$ rm Gemfile.lock
+
+$ bundle install
+# Gemfileの内容に従ってGemをインストール
+
+```
+
+
+
+<a name="database"></a>
+## データベースの作成
+
+### rake db:create
+新しくデータベースを作成するには「rake db:create」というコマンドを実行します。このコマンドは`database.yml`というファイルの内容に基づいてデータベースを新規作成するという機能を持っています。
+
+### database.yml
+database.ymlにはデータベースの設定を記述します。Railsは開発環境ごとにデータベースを持つので、開発環境の分だけデータベースの設定が記述してあります。
+
+
+```sh
+$ rake db:create
+# データベースの作成
+```
+
+
+
+<a name="rooting"></a>
+## ルーティング
+* ウェブサイトはPCからリクエストを送り、サーバーがレスポンスを返すことで成り立っている
+* ルーティング→コントローラー→ビューの順で処理が進んでいく
+* ルーティングにはコントローラーのアクションを動かすのかを設定しておく
+railsではルーティングをroutes.rbに記述する
+* ルーティングにはリクエストのパスに対してどのコントローラーのアクションを動かすかを設定する
+
+config/routes.rb
+```ruby
+Rails.application.routes.draw do
+    get 'tweets' => 'tweets#index'
+end
+```
+
+
+<a name="controller"></a>
+## コントローラー
+
+* コントローラー作成
+
+/Users/ユーザー名/projects/project:
+```sh
+$ rails g controller コントローラー名
+# コントローラーを作成
+```
+
+* コントローラー削除
+
+/Users/ユーザー名/projects/project:
+```sh
+$ rails d controller コントローラー名
+# コントローラーを
+```
+
+* コントローラーファイルを編集
+
+app/controllers/tweets_controller.rb
+```ruby
+class TweetsController < ApplicationController
+
+    def index
+    end
+
+end
+```
+
+* アクション
+
+アクションとはコントローラーに存在するインスタンスメソッドのことを指します。
+さきほどの編集でTweetsControllerクラスにindexというインスタンスメソッドを作成しました。つまりこれはindexというアクションを作成したことを意味します。コントローラーは複数のアクションを持つことが可能なので、index以外のアクションを追加することが可能です。
+
+### 要点チェック
+
+* コントローラーのクラスはファイル名から単語の先頭を大文字にしてアンダーバーを取った名前で作成される
+* コントローラークラスのインスタンスメソッドはアクションと呼ばれる
+* リクエスト→ルーティング→コントローラーの流れで処理が行われる
+
+
+<a name="view"></a>
+## ビュー
+
+* ビューファイルを作成
+
+`app/views/tweets/index.html.erb`
+
+```html
+<p>Hello World!</p>
+```
+
+ビューファイルの拡張子はhtml.erbですが、これはrubyのコードを書くことが出来るHTMLファイルだ
+
+* ビューのきまり
+
+ビューファイルはコントローラーのメソッドひとつにつき、ひとつ存在しています。今回作成したビューファイルは「tweets」ディレクトリの中に「index.html.erb」という名前で作成しました。つまりこれは「tweets」コントローラーの「index」アクションのビューファイルであることを示しています。このようにビューファイルはコントローラーと同じ名前のフォルダ内にあるアクション名と同じファイル名のものが適用されるというrailsの決まりがあります。
+
+* レイアウトファイル
+
+app/views/layouts以下にあるファイルはレイアウトファイルと呼ばれるビューファイルです。レイアウトファイルは、それぞれのビューファイルが読み込まれる前に読み込まれます。つまり、このファイルにそれぞれのビューの共通部分(ヘッダーやフッターなど)を定義しておくことで、同じコードを省略することができます。
+
+
+### サーバーをきどう
+```sh
+$ cd ~/projects/pictweet
+# アプリケーションのあるディレクトリに移動
+
+$ rails s
+# テストサーバーを起動
+```
+
+アプリケーションを動かすためにはサーバーを立ち上げる必要があります。「rails s」コマンドはアプリケーションを動かすためのテストサーバーを起動するためのコマンドです。rails sのsとはserverを省略したものです。
+
+テストサーバーが起動したので、アプリケーションが正しく動いているかを確認しましょう。テストサーバーでアプリケーションを立ち上げる場合のURLはパスの前にhttp://localhost:3000がついたものになります。
+
+
+
+<a name="model"></a>
+## モデル
+
+* **テーブル**
+
+テーブルとは、表形式の収納場所です。0章にて、データベースとは様々な情報を保存しておく場所だということを学びました。ツイッターを例にとると、ツイートやユーザーの情報がデータベースに存在するテーブルに整理して保存されています。
+
+* **レコードとカラム**
+
+テーブルの横1行のことをレコード、縦の列をカラムと言います。１列目に項目名を入れたエクセルのようなイメージです。
+
+* **モデル**
+
+モデルは、データベースへのアクセスをはじめとする情報のやりとりに関する処理を担当しているパートです。
+
+* **モデルの命名規則**
+
+Railsでは、ファイルやテーブルなどの命名を規則に従った形にする必要があります。モデルとテーブルに関する命名規則は以下のようになっており、これに従えばテーブルとモデルが結びつきます。
+
+種類 | 概要 | 名前例
+- | - | -
+モデルクラス名 | 先頭は大文字、単数形  | Tweet
+モデルクラスのファイル名  |  先頭は小文字、単数形  | tweet.rb
+テーブル名 |  先頭は小文字、複数形 | tweets
+
+* **rails g model コマンド**
+
+rails g modelコマンドを使用すると、モデルファイルと関連ファイルを自動で作成することができます。実際に使用する際には「rails g model モデルクラス名(全て小文字)」というように作成したいモデルのクラス名を全て小文字にしたものを後ろに付けて実行します。
+
+```ruby
+$ rails g model モデルクラス名(全て小文字)
+# モデルを作成
+```
+
+### テーブルを作成
+
+* **マイグレーションファイル**
+
+マイグレーションファイルは、テーブルの設計図です。マイグレーションファイルにどんなカラムを持つテーブルにするかを書き込み、実行することでテーブルが作成されます。
+
+`db/migrate/2015XXXXXXXXXXXX_create_tweets.rb`
+
+* **カラムの「型」**
+
+カラム名を指定するとともに、そこにどんなデータが入るのかを示す「型」も指定する必要があります。以下に主な型の種類を紹介しておきます。
+
+型  | 説明 | 用例
+- | - | -
+:integer |   数字 | ユーザーのidなど
+:string |文字(少なめ)| ユーザー名、パスワードなど
+:text  | 文字(多め) | 投稿文など
+:boolean  |  真か偽か  |  真偽フラグ
+:timestamp | 日付と時刻  | 作成日時、更新日時など
+
+db/migrate/2015XXXXXXXXXXXX_create_tweets.rb:
+```ruby
+  class CreateTweets < ActiveRecord::Migration
+    def change
+      create_table :tweets do |t|
+        t.string      :name
+        t.text        :text
+        t.text        :image
+        t.timestamps
+      end
+    end
+  end
+```
+
+
+* ** rake db:migrate **
+
+さて、マイグレーションファイルはテーブルの設計図を表しているのでした。実際にその設計図に従ってテーブルを操作するにはrake `db:migrate`コマンドを使用します。
+
+```sh
+$ pwd
+# 現在のディレクトリが「users/ユーザー名/projects/pictweet」であることを確認
+
+$ rake db:migrate
+# マイグレーションファイルの実行(tweetsテーブルの作成)
+```
+
+* **スキーマファイル**
+
+スキーマファイルは「rake db:migrate」を実行した際に更新が行われ、最新のマイグレーションファイルのバージョンが記録されます。先ほどの作業でtweetsテーブルを作成するためにマイグレーションを実行しました。つまり、スキーマファイルにはtweetsテーブルを作成する際に編集したマイグレーションファイルのバージョンが記録されていることになります。
+
+* **schema_migrations**
+
+schema_migrationsとはデータベースの変更履歴のようなもので、どのマイグレーションファイルまでが実行されているかが記録されていくテーブルです。マイグレーションファイルが実行された際に自動的に作成されます。
+
+
+### 一度変更したデータベースの状態を元に戻そう
+
+rake db:migrateコマンドを実行した際、読み込んだmigrationファイルの記述が間違っていて、意図しない名前や型を持つテーブルができてしまうことがあります。そのような場合は、`rake db:rollback` コマンドを利用します。
+
+* **rake db:rollback**
+
+これから先新たなテーブルを作成したり、カラムの追加などテーブルに変更を加える際は常にmigrationファイルを作成します。rake db:rollbackコマンドを実行すると、データベースの状態が最新のmigrationファイルを実行する前に戻ります
+
+```sh
+$ pwd
+# 現在のディレクトリが「users/ユーザー名/projects/pictweet」であることを確認
+
+$ rake db:rollback
+# データベースの状態を最新のマイグレーションファイルの実行前に戻す
+```
+
+
+
+<a name="console"></a>
+## コンソール
+
+* ** rails c コマンド **
+
+rails c とは「rails console」(コンソール)の略です。コンソールを実行すると作成したRailsアプリケーションのメソッドやクラスなどを実際に呼び出すことができます。ターミナルから「rails c」コマンドを実行することでコンソールを起動できます。
+
+```sh
+$ rails c
+# コンソールの起動
+
+[1] pry(main)>
+
+
+[1] pry(main)> exit
+# exitと書きエンターキーで実行(ターミナルに戻る)
+```
+
+* ** ActiveRecord **
+
+ActiveRecordはRubyのGemの一種です。このGemはモデルとテーブルをつなぎ合わせることで、Railsからテーブルのレコードにアクセスできるようにします。ActiveRecordはRailsにデフォルトでインストールされています。実際に、この機能を利用する際にはActiveRecord::Baseというクラスを継承して使用します。クラスの継承に関しては、後ほど詳しく説明します。
+
+app/models/tweet.rb
+```ruby
+class Tweet < ActiveRecord::Base
+end
+```
+
+* **allメソッド**
+
+allメソッドはActiveRecord::Baseを継承したモデルと結びつくテーブルのレコードを全て取得します。
+```sh
+[1] pry(main)> Tweet.all
+```
+
+* **newメソッド・saveメソッド**
+
+newメソッドはクラスのインスタンスを生成するメソッドです。ActiveRecord::Baseを継承しているモデルクラスの場合、newメソッドを実行すると関連するテーブルのカラム名がキーになったハッシュのようなものが生成されます。これをモデルクラスのインスタンスと呼びます。インスタンスのそれぞれのキーに値を代入してsaveメソッドを実行するとテーブルに保存されます。
+
+```sh
+[1] pry(main)> tweet = Tweet.new(name: "takashi", text: "Nice to meet you!")
+[2] pry(main)> tweet.save
+
+```
+
+* **createメソッド**
+
+createメソッドはレコードの作成を行なうことの出来るメソッドです。newメソッドとsaveメソッドを使用して行なった処理をcreateメソッドで一気に行なうことができるので、単にレコードを作成する場合にはこのメソッドを使用しましょう。下記の例１と例２は同様の作業を行なっています。
+
+```ruby
+[1] pry(main)> Tweet.create(name: "takashi", text: "Nice to meet you!")
+```
+
+
+* **findメソッド**
+
+findメソッドは引数に指定したidにあたる作品情報を1件だけ取得します。 もし、そのidにあたる作品が存在しない場合、エラーが発生します。
+```sh
+pry(main)> tweet = Tweet.find(1)
+=><Tweet id:1, text:"こんにちは!", created_at:nil, updated_at:nil, name:"ken", image:nil >
+# Tweetsテーブルからidが1のレコードを取得し、tweetという変数に代入
+
+```
+
+
+* ** レコードの更新**
+
+テーブルに保存されているレコードを更新するにはそのレコードをインスタンスとして取得し、カラムを指定して値を直接代入します。上書きするだけではレコードの値は更新されないので、上書きを保存するにはインスタンスのsaveメソッドを使います。
+
+```sh
+インスタンス.カラム名 = 上書きしたい値  # 指定したカラムに値を代入
+インスタンス.save                   # 更新した情報を保存する
+```
+
+* ** find_by **
+
+特定の条件を満たすインスタンス（レコード）を取得するにはfind_byメソッドを使います。ただし、条件に満たすものが複数あった場合、idが一番若い一件だけを返します。
+そのため、主に１件しか存在しないことが期待される場合にfind_byメソッドを使います。なお、引数はnewメソッド等と同様にカラムと値を指定します。
+
+* ** where **
+
+特定の条件を満たすインスタンス（レコード）を全て取得する場合はwhereメソッドを使います。find_byメソッドと同様に引数でカラムと値を指定することで、その指定に一致するレコードを全て取得します。なお、返り値は条件を満たすインスタンスにより構成された配列のような形となっていて、eachメソッド等が使えます。
+
+* ** limit **
+
+limitメソッドを利用すると、取得するレコードの数を制限することができます。制限する数は、limitメソッドの引数で指定します。
+
+* ** order **
+
+テーブルから取得してきたレコードの塊に対してorderメソッドを利用すると、様々な条件でレコードの順番を並び替えることができます。例えば以下のようにorder('カラム名 DESC')とすると、指定したレコードのカラムの中身の数値が大きい順にレコードを並び替えてくれます。
+
+* **DESC と ASC **
+
+DESC は降順の意味の Descending、ASC は昇順の意味の Ascending という英語の略です。
+
+* ** update **
+
+テーブルに保存されているレコードは、以下のように「インスタンスの取得」 → 「インスタンスのカラムの更新」という流れで特定のインスタンスのカラムの値を更新することができます。
+
+属性値の更新には、 update というメソッドを利用します。updateメソッドの引数は、(カラム名: 更新したい値, カラム名: 更新したい値・・・)とします。
+
+
+<a name="view_data"></a>
+## ビューにデータを受け渡す
+
+* **コントローラーからビューにデータを渡す**
+
+```ruby
+  class TweetsController < ApplicationController
+
+    def index
+      @tweet = "プログラミングなう"
+    end
+
+  end
+```
+
+コントローラークラスでインスタンス変数(@つきの変数)を定義すると、そのインスタンス変数はビューで呼び出すことができるという決まりがあります。今回の作業では、@tweet = "プログラミングなう"と定義しました。つまり、ビューにおいて@tweetを呼び出すと、"プログラミングなう"という情報を使用できるというわけです。
+
+
+* ** 受け取ったデータをビューで表示**
+
+先ほどの作業で、インスタンス変数をtweets_controllerのindexアクションの中で定義しました。その場合このインスタンス変数は、indexアクションに対応したビューである`app/views/tweets/index.html.erb`の中でのみ呼び出しが可能です。他のアクションで定義したインスタンス変数を呼び出すことはできません。
+
+app/views/tweets/index.html.erb
+```html
+<%= @tweet %>
+```
+
+* ** rubyコード**
+
+ビューで、定義した変数を使用するためには`<%= %>`で変数名を囲んであげる必要があります。`<%= %>`の中のrubyコードは、ビューをレスポンスとして返すまでに実行されて、最終的にはHTMLコードとして返されます。`<%= %>`を利用するにはビューの拡張子が.erbになっている必要があります。
+
+```html
+ <%= 変数名 %>                      #変数をビュー内で使用
+```
+
+これでビューにデータを受け渡し、表示させるということができているはずです。そこで、実際にサーバーを立ち上げて確認してみましょう。
+また=がない`<% %>`でもRubyの記述を行うことは可能です。しかし`<% %>`の場合は結果を出力されないため、出力をしない計算や繰り返し処理、条件分岐などRubyコードを記述するのに使用します。
+
+
+
+<a name="model_view"></a>
+## モデルを利用してデータを表示する
+
+* **モデルとコントローラー**
+
+コントローラーで、モデルを利用してデータベースの値を取り出すことが出来る。
+```ruby
+  class TweetsController < ApplicationController
+
+    def index
+      @tweets = Tweet.all
+    end
+
+  end
+```
+
+* **部分テンプレート**
+
+同じHTML構造の部分を共通化することによって、無駄なくビューファイルを作成することが出来ます。この共通化された部分を、 部分テンプレートといいます。 部分テンプレートを使用した場合、そのHTML構造を他のビューでも使いまわすことができるという利点も存在します。
+
+また、部分テンプレートのファイル名は必ずアンダーバー「_」から始まります。
+
+app/views/tweets/_tweet.html.erb
+```html
+<p>プログラミング中・・・</p>
+```
+
+* **render**
+
+renderメソッドは、部分テンプレートを呼び出す際に利用するメソッドです。
+
+renderメソッドに :partialというオプションをつけることで、明示的に部分テンプレート名を指定し、部分テンプレートを表示することができます。
+
+app/views/tweets/index.html.erb
+```html
+<div class="contents row">
+    <%= render partial: "tweet" %>
+</div>
+```
+
+* ** render collectionオプション **
+
+部分テンプレートを繰り返し表示したい場合、renderメソッドに :collection というオプションをつけることで実現できます。具体的には、以下のように利用します。
+
+このようにすると、部分テンプレートである_tweet.html.erbの中身を、@tweetsのレコードの数だけ繰り返し表示するようになります。
+
+このとき、部分テンプレート内で使用される変数は、partialオプションで指定した部分テンプレート名(今回の場合はtweet)になります。
+
+### 要点チェック
+
+* 部分テンプレートは同じHTML構造の部分を共通化することが出来る
+* 部分テンプレートを使うにはビューファイルを編集し、部分テンプレートのビューファイルを新規作成する
+* 部分テンプレートを使用するビューファイルにはrenderを記述する
+* 部分テンプレートファイルの名前は先頭をアンダーバーにしてビューファイルと同じディレクトリに作成する
+* モデルのインスタンスに.カラム名と記述することでそのインスタンスのプロパティの値を取り出すことが出来る
+
+
+
+<a name="form"></a>
+## フォーム
+フォームとは、ユーザーが情報を入力し、その情報をサーバーに送信するためのものです。HTMLのコードの中にform要素を作成し、その中にフォームを構成する部品のinput要素やtextarea要素を配置することで作成することができます。
+
+### form_tag
+
+ビューにHTMLのformタグを作成することで、ビューから情報を送信できることは説明しました。しかし、Railsではセキュリティの観点から、HTMLのformタグだけで作成したフォームを使用することは推奨されません。通常、Railsでフォームから情報を送信するためにはform_tagを始めとするヘルパーメソッドを使用します。
+
+```html
+  <%= form_tag('/tweets', method: :post) do %>
+    <h3>
+      投稿する
+    </h3>
+    <input placeholder="Nickname" type="text" name="name">
+    <input placeholder="Image Url" type="text" name="image">
+    <textarea cols="30" name="text" placeholder="text" rows="10"></textarea>
+    <input type="submit" value="SENT">
+  <% end %>
+```
+
+最初の`'/tweets'`の部分は`action`属性を示しています。これは、フォームに入力された情報がどこに送信されるのかを表しています。`method:`の部分は入力された情報をどのHTTPメソッドで送信するのかを指定しています。つまり、これは`/tweets`に`post`メソッドでフォームに入力された情報を送信することを示しています。
+
+### HTTPメソッド
+以前に、ウェブサイトを閲覧する際にPCからサーバーにリクエストが送られ、それに対してサーバーからレスポンスが返ってくる仕組みについて説明しました。このリクエストにはその目的によっていくつかの種類（メソッドといいます）に分けられます。
+
+HTTPメソッド | 役割
+- | -
+get | ブラウザからサーバーへ、「サーバーからブラウザに固有の情報を返す」ように命令する。単にウェブサイトを閲覧する際にはこのメソッドが利用されている。
+post  |  ブラウザからサーバーに「ある情報」を送信するためのもの。情報の登録などの際、サーバーに情報を送信するために利用される。
+
+* **パラメーター**
+
+HTTPリクエストをサーバーに送信する際に、「パラメーター」と呼ばれる情報を付加してリクエストを送信することが出来ます。ツイートの投稿の場合だと、ツイートの本文、画像のURL、ニックネームなどがパラメーターとして付加され、リクエストが送信されます。
+
+サーバーにパラメーターが送信される際には、キーと呼ばれる情報と一緒に送信されます。キーと一緒に送信するのは、複数の情報をパラメーターとして送信した場合、どのデータがどのパラメーターかを判別するためです。
+
+* **params**
+
+ビューでフォームに入力された情報は、コントローラーにキーと一緒にパラメーターとして送られます。このパラメーターはparamsというメソッドを使うことで取得することが出来ます。paramsメソッドを使用する際にはparams[:キー名]という形で使用することが出来ます。
+
+```ruby
+    def create
+        Tweet.create(name: params[:name], image: params[:image], text: params[:text])
+    end
+```
+
+
+* **ストロングパラメーター**
+
+ストロングパラメーターとは、指定したキーを持つパラメーターのみを受け取るようにするものです。もし仮に悪意のあるユーザーが、不正な情報を送信しようとしたときに、ストロングパラメーターを設定しておくと、不正な情報を受け取らずにすみます。
+
+* **privateメソッド**
+
+classの内部でprivateとソースコードに書くと、それ以降に定義したメソッドはclassの外部から呼び出せなくなります。
+
+このようにするメリットは以下の2つです。
+
+1. 外部から呼ばれたら困るメソッドを守ることができる
+    メソッドの中には、外部から呼び出されてしまうとエラーを起こすメソッドも存在し得ます。そんな事態を事前に防ぐことができます。
+
+2. 可読性
+    外部から呼び出されるメソッドを探すときに、private以下の部分は目を通さなくて良くなります。
+
+```ruby
+    def create
+      Tweet.create(tweet_params)
+    end
+
+    private
+    def tweet_params
+      params.permit(:name, :image, :text)
+    end
+```
+
+### 要点チェック
+
+* リクエストと一緒にパラメーターと呼ばれる情報が送られる
+* パラメーターは必ずキーと一緒に送られる
+* ストロングパラメーターを設定すると、指定したキーを持つパラメーターのみを受け取ることが出来る
+
+### binding.pry
+
+pry-railsの機能の中で最も使用するのはbinding.pryという機能です。これは、binding.pryという文字列をソースコードの中に記述することで、binding.pryという文字列が存在する部分でRailsの処理を止めることが出来るというものです。
+
+### ルートパス
+ウェブサイトへアクセスする際などに使用するURLには、ホスト名とパスの2つの部分が存在します。「localhost:3000」や「pictweet.me」のように、パスを付けないホスト名だけのURLのことをルートパスと言います。
+
+```ruby
+Rails.application.routes.draw do
+    root  'コントローラー名#アクション名'
+end
+```
+
+ルーティング確認：
+```sh
+$ rake routes
+    Prefix Verb URI Pattern           Controller#Action
+      root GET  /                     tweets#index
+    tweets GET  /tweets(.:format)     tweets#index
+tweets_new GET  /tweets/new(.:format) tweets#new
+           POST /tweets(.:format)     tweets#create
+```
+
+
+
+<a name="pagenation"></a>
+##  ページネーション
+ページネーションとは長い文章を複数のページに分割して、各ページへのリンクを並べアクセスしやすくすることです。検索サイトのGoogleなども検索結果の表示にはページネーションを使用しています。
+
+### 1. Gemをインストールしてサーバーを立ち上げ直す
+* **kaminari**
+
+kaminariはRubyのGemの一種です。このGemをインストールすることによって、簡単にページネーションを実装することができます。
+
+* **kaminari インストール**
+Gemfileの最後の行に下記の記述を追記してください
+```
+gem 'kaminari'
+```
+
+bundle installを実行してください
+```sh
+$ pwd
+#現在のディレクトリが~/projects/pictweetであることを確認
+$ bundle install
+#bundle install の実行
+```
+
+### 2. コントローラーファイルを編集する
+1ページに表示されるツイートの情報を5件にするということは、コントローラーからビューに送るツイート情報も5件のみになります。その数を制御するために、kaminariをインストールすると使える2つのメソッドを利用します。
+
+* **kaminari:pageメソッド**
+
+kaminariを導入すると、モデルクラスにpageメソッドが定義されます。このメソッドは、ページネーションにおけるページ数を指定します。
+ビューのリクエストの際`params`の中にpageというキーが追加されて、その値がビューで指定したページ番号となります。なので、pageの引数は`params[:page]`となります。
+
+* **kaminari:perメソッド**
+
+perメソッドもpageメソッドと同様、kaminariというgemをインストールすることで利用できるメソッドです。1ページあたりに表示する件数を指定します。perメソッドに引数として渡した数字が、ページネーションが実装されたビューで1ページあたりに表示する件数になります。
+
+```ruby
+変数名 = クラスを利用して取得したレコードのインスタンス.page(params[:page]).per(ここに1ページで表示したい件数を入力)
+
+```
+
+### 3. ビューファイルを編集する
+
+* ** kaminari:paginateメソッド**
+
+ページネーションのリンクを表示したいときに使用するメソッドです。kaminariをインストールすると利用できます。paginateメソッドの引数は、コントローラーで定義した変数を指定します。
+
+```html
+<div class="contents row">
+    <%= render partial: "tweet", collection: @tweets %>
+    <%= paginate(@tweets) %>
+</div>
+```
+
+
+
+
+
+<a name="login"></a>
+## ログイン機能
+Twitterなどのウェブサイトにはログイン機能があります。この機能はサインアップしたユーザーに対してアカウントを発行し、そのアカウントで情報を管理することができる機能です。Railsの場合、ログイン機能は「devise」というGemを使用することで簡単に実装することができます。
+
+###１．Gemをインストールしてサーバーを立ち上げ直す
+
+* **devise**
+
+deviseは、ログイン機能を簡単に作成することができるGemです。ログイン機能をGem無しで実装するのは非常に大変です。しかし、このGemを使うことで比較的簡単に実装することができます。
+
+###２．コマンドを利用してdeviseをインストールする
+
+deviseを使用するためには、Gemのインストールに加えてdevise専用のコマンドを利用して設定ファイルを作成する必要があります。
+```sh
+$ rails g devise:install
+# deviseの設定ファイルを作成
+
+# 新規作成されるファイル
+# config/initializers/devise.rb
+# config/locales/devise.en.yml
+```
+
+###３．コマンドを利用してUsersモデルを作成する
+deviseを利用する際にはアカウントを作成するためのUserモデルを新しく作成します。作成には通常のモデルの作成方法ではなく、deviseのモデルの作成用コマンドを使用します。
+
+* **rails g devise コマンド**
+
+deviseで、ログイン機能をつける概念のモデルを作成する際に利用するコマンドです。モデルに加えて、ログイン機能のために必要なカラムが追加されるマイグレーションファイルなどが生成されます。
+
+rails g deviseコマンドでuserモデルを作成する
+```sh
+$ rails g devise user
+# deviseコマンドでモデルを作成
+
+# 新規作成されるファイル
+# app/models/user.rb
+# db/migrate/2015XXXXXXXXXX_devise_create_users.rb
+# test/fixtures/users.yml
+# test/models/user_test.rb
+```
+
+rake db:migrateを実行する
+ターミナル
+```sh
+$ rake db:migrate
+# 作成されたマイグレーションファイルを実行
+```
+
+###４．未ログイン時にはログインと新規登録ボタンを表示する
+誰かが未ログイン時にツイート一覧画面を表示した際に、ヘッダーに投稿ボタンの代わりにログインと新規登録ボタンを表示するようにしましょう。
+
+* **Rubyタグ**
+
+`<%=`と`%>`で囲まれた部分をRubyタグと言います。Rubyタグは拡張子が「erb」のビューファイルで使用することが出来ます。Rubyタグを使用して記述されたコードはビューファイルが読み込まれる際にHTMLコードとなって読み込まれます。
+
+* **link_toメソッド**
+
+`link_to`はRubyタグの中で使用することが出来るメソッドです。このメソッドは引数を指定することで様々なリンクを生成します。
+
+通常HTMLコード内でリンクを生成する際には`aタグ`を使用します。`link_to`メソッドを使って記述を行なうと、HTMLコードが読み込まれる際に`aタグ`に変換されるので、サイトを表示した際には`aタグ`と同様に、リンクとして表示されます。今回の実装で追加するログインや新規登録ボタンもこのメソッドを利用して生成します。
+
+```html
+<%= link_to 'ツイート一覧へ', '/tweets', class: 'sample' %>
+# 作成したaタグに`class="sample"`属性を付与
+```
+
+`link_to`メソッドがビューファイルとして読み込まれる際には、以下の様なHTMLコードになります。
+```html
+<a class="sample" href="/tweets">ツイート一覧へ</a>
+```
+
+* **user_signed_in?**
+
+deviseでログイン機能を実装すると、`user_signed_in?`というメソッドを使用することができます。これは、ユーザーがサインインしているかどうか検証するメソッドです。
+サインインしている場合には`true`を返し、サインインしていない場合には`false`を返します。
+
+```html
+  <% if user_signed_in? %>
+    # ユーザーがサインインしている場合に実行する処理
+  <% end %>
+```
+
+`user_signed_in?`が返す値は最終的に`true`か`false`になるので、上記の例のように`if`文または、`unless`文とともに使用します。
+
+* **prefix**
+
+Prefixとは、ルーティングのパスが入る変数のことです。コントローラやビューなどで呼び出すことで、prefixに入っているパスやURL情報を取得できるようになります。Prefixは、routes.rbの各リクエストにオプションとして設定しますが、記述によっては自動的に作成される場合もあります。
+
+これを確認するには、ターミナルからrake routesコマンドを実行します。
+
+###５．コントローラーにリダイレクトを設定する
+
+* **unless文**
+
+ここまで条件分岐にはif文を使用してきましたが、似た制御構造を持つものとしてunless文があります。unless文は条件式が偽(false)の場合の処理を記述するのに使われます。今回はユーザーがログインしていない場合の条件分岐にunless文を使用してみましょう。以下は最も基本的なunless文の書き方です。
+
+```ruby
+  puts 'ログインをしてください' unless user_signed_in?
+  # 以下と同義
+
+  unless user_signed_in?
+    puts 'ログインをしてください'
+  end
+```
+
+* **redirect_toメソッド**
+
+`redirect_to`メソッドはアクションを行った後に特定のページやアクションを実行することができます。
+また下記の例のように`action: :index`は引数で、引数の括弧`()`は省略できます。またハッシュの形式で引数を渡すことができます。
+今回はindexアクションを強制的に実行させるために、`redirect_to action: :index`を記述します。
+
+```ruby
+  class TweetsController < ApplicationController
+
+    def index
+      @tweets = Tweet.page(params[:page]).per(5).order("created_at DESC")
+    end
+
+    private
+    def move_to_index
+      redirect_to action: :index
+      # indexアクションを強制的に実行する
+    end
+  end
+```
+
+
+* **before_action**
+
+Railsではコントローラーでbefore_action :メソッド名を宣言することで、コントローラーのアクションが実行される前に、そのメソッドが実行されます。
+またRailsのコントローラーのフィルターオプションonlyやexceptを使うことにより、before_actionを実行することをアクションごとに制限をかけることができます。
+
+```ruby
+  class TweetsController < ApplicationController
+
+    before_action :hoge, except: :index
+    # indexアクション以外が実行される前にhogeが実行される。
+
+    def index
+      @tweets = Tweet.page(params[:page]).per(5).order("created_at DESC")
+    end
+
+    private
+    def hoge
+    end
+  end
+```
+
+
+
+<a name="change_login"></a>
+## ログイン・サインアップ画面のビューを変更
+
+deviseを使用してログイン機能を実装すると自動的にログイン画面とサインアップ画面が生成されます。今回はこれらの画面にPicTweetのレイアウトを適用させていきます。
+
+###１．devise用のビューファイルを作成する
+deviseでログイン機能を実装すると、ログイン・サインアップ画面は自動的に生成されますがビューファイルとしては生成されません。これは、deviseのGem内に存在するビューファイルを読み込んでいるためです。
+
+ビューファイルに変更を加えるためには、deviseのコマンドを利用してビューファイルを生成する必要があります。
+
+devise用のビューファイルを生成:
+```sh
+$ rails g devise:views
+
+# 新規作成されるファイル
+# app/views/devise以下のディレクトリにあるビューファイル各種
+```
+
+###２．ログイン・サインアップ画面のビューファイルを編集する
+
+上記の作業でdevise用のビューファイルを生成することが出来ました。今度は生成されたビューファイルを編集してレイアウトを変更していきます。
+
+* サインアップ画面は`app/views/devise/registrations/new.html.erb`
+* ログイン画面のビューは`app/views/devise/sessions/new.html.erb`
+
+
+<a name="nickname"></a>
+## サインアップ時にニックネームを登録
+
+現在、サインアップ時に登録する情報はメールアドレスとパスワードの2つです。これに加えてニックネームを登録出来るようにしましょう。
+
+### １．ユーザーテーブルにカラムを追加する
+ニックネームを登録するために、usersテーブルにニックネームを保存するためのカラムを追加します。追加したカラムに、サインアップ時に登録するニックネームを保存します。
+
+* **カラムを追加するマイグレーションファイルの作成**
+
+カラムを追加するマイグレーションファイルを作成するためには、下記のコマンドを実行します。
+
+```sh
+$ rails g migration Addカラム名To追加先テーブル名 追加するカラム名:型
+```
+
+例えば、userの自己紹介を保存するためのカラム、introductionカラムをusersテーブルにtext型で追加したいとします。その時は、以下の例のように書きます。
+```sh
+$ rails g migration AddIntroductionToUsers introduction:text
+# usersテーブルにintroductionカラムをtext型で追加するマイグレーションファイルの作成
+```
+この時、「Add」「Introduction」「To」「Users」と、単語の頭文字が大文字になっていることに注目してください。
+
+* **スネークケースとキャメルケース**
+
+プログラムが単語の区切りを認識する際、2通りの方法があります。それらをそれぞれ「スネークケース、キャメルケース」と呼びます。
+スネークケースは、例えば「sample_hoge_huga」のように「_」で単語を区切る方法です。対してキャメルケースは、「SampleHogeHuga」のように単語の頭文字を大文字にすることで単語を区切ります。
+
+```sh
+$ pwd
+# ディレクトリが~/projects/pictweetであることを確認
+
+$ rails g migration AddNicknameToUsers nickname:string
+#usersテーブルにnicknameカラムをstring型で追加するマイグレーションファイルを作成
+
+$ rake db:migrate
+# 作成したマイグレーションファイルを実行
+```
+
+### ２．登録画面のビューを編集する
+これでDB側の準備は整ったので、続いてユーザーの新規登録画面にニックネームを登録するためのフォームを追加します。ユーザーの新規登録画面のビューは、`app/views/devise/registrations/new.html`.erbです。その際、オプションをつけることで入力できる文字数を6文字以下にします。
+
+* **text_field:maxlengthオプション**
+
+maxlengthは、text_fieldというinputタグを生成するヘルパーメソッドにつけることができるオプションです。
+
+```html
+  <div class="field">
+    <%= f.text_field :nickname, autofocus: true, maxlength: "6" %>
+  </div>
+```
+この場合、生成されたフォームに7文字以上入力すると、エンターキーを押した瞬間に6文字までカットされます。
+
+
+### ３．ストロングパラメーターを編集する
+サインアップ時に入力する情報はパラメーターとしてサーバーに送信されます。通常のリクエストの場合は、コントローラーの記述してあるストロングパラメーターで受け取れるパラメーターを制限します。
+
+しかし、deviseでログイン機能を実装した場合のパラメーターの受け取り方は通常とは異なります。ログイン時に送られてくるパラメーター制限するストロングパラメーターは、deviseのGem内に記述されているため編集することはできません。今回追加したニックネームを受け取れるようにするには、deviseが提供しているconfigure_permitted_parametersメソッドを利用します。
+
+* **configure_permitted_parametersメソッド**
+
+deviseでは初期状態でサインアップ時にメールアドレスとパスワードのみを受け取るようにストロングパラメーターが設定してあるので、追加したキーのパラメーターは許可されていません。追加のパラメーターを許可したい場合は、`application_controller`において`before_action`に`configure_permitted_parameters`メソッドを設定します。
+
+```ruby
+  class ApplicationController < ActionController::Base
+    # Prevent CSRF attacks by raising an exception.
+    # For APIs, you may want to use :null_session instead.
+    protect_from_forgery with: :exception
+    before_action :configure_permitted_parameters, if: :devise_controller?
+
+    def configure_permitted_parameters
+      devise_parameter_sanitizer.for(:ストロングパラメーターを追加したいアクション名) << :「ここに追加するキー名」
+    end
+  end
+```
+
+今回は、sign_upアクションに対してnicknameというキーのパラメーターを追加で許可します。
+
+```ruby
+class ApplicationController < ActionController::Base
+  # Prevent CSRF attacks by raising an exception.
+  # For APIs, you may want to use :null_session instead.
+  protect_from_forgery with: :exception
+  before_action :configure_permitted_parameters, if: :devise_controller?
+
+  def configure_permitted_parameters
+    devise_parameter_sanitizer.for(:sign_up) << :nickname
+  end
+end
+```
+
+
+
+<a name="user_info"></a>
+## ツイートにユーザー情報を追加する
+
+現在、ツイートはどのユーザーが投稿したものなのかわからない状態になっています。これがわかるようになると、特定のユーザーがつぶやいたツイート一覧を取得できたり、ツイートの削除を行う際につぶやいた本人しか削除できないように設定できたりと色々便利です。そこで、本項ではツイートにユーザーの情報を追加して、誰が投稿したツイートなのかが分かるようにします。
+
+### １．tweetsテーブルにカラムを追加する
+ツイートにユーザーの情報を追加する場合、tweetsテーブルに新しく`user_id`というカラムを作成し、そこにツイートを投稿したユーザーのidを入れます。カラムの追加の手順は`nickname`カラムを追加した際と同様です。
+
+```sh
+$ rails g migration AddUserIdToTweets user_id:integer
+# tweetsテーブルにuser_idカラムをinteger型で追加するマイグレーションファイルの作成
+
+$ rake db:migrate
+# マイグレーションファイルの実行
+```
+
+### ２．ツイート保存時にユーザー情報を追加する処理を記述する
+
+上記の作業でtweetsテーブルにカラムが追加されました。そこで今回はツイートの保存時に投稿したユーザーのidをテーブルに保存する処理を記述します。
+
+* **current_user**
+
+deviseでログイン機能を実装すると、current_userというヘルパーメソッドを使用することができます。これは、現在ログイン中のユーザーのレコードを、userクラスのインスタンスとして取得することができるメソッドです。
+
+例えば、`user_id`が`1`のアカウントでログインしている場合、`current_user`は`User.find(1)`と同じ意味を持ちます。この時、`current_user.usersテーブルのカラム名`とすることで、ログイン中のユーザーの情報として登録されている各カラムの値を取得することができます。
+
+ツイートを投稿したユーザーとはつまり現在ログインしているユーザーのことです。なので、`tweetsテーブルのuser_idカラムに保存すべきなのはcurrent_userのidカラムの値`です。
+
+実際にツイートをテーブルに保存する処理が書かれているのは`tweets_controller`の`create`アクションです。
+
+app/controllers/tweets_controller.rb:
+```ruby
+    def create
+        Tweet.create(name: tweet_params[:name], image: tweet_params[:image], text: tweet_params[:text], user_id: current_user.id)
+    end
+```
+
+
+
+<a name="mypage"></a>
+## マイページを作成
+現在、ツイートの一覧画面には全ユーザーのツイートが表示されています。そこで、一覧画面とは別に、現在ログイン中のユーザーの投稿のみが表示されているマイページを作成します。
+
+### １．マイページのルーティングを記述する
+新しくページを作成する場合、まずはルーティングを設定します。マイページへのパスは、usersテーブルでのidが1のユーザーでは`/users/1`、idが99のユーザーでは`/users/99`となるようにルーティングを設定します。
+
+マイページのパスは他のページと違って、ユーザーごとにパスが異なります。その場合、通常とは多少異なるルーティングの記述方法を使います。
+マイページを表示する際にはusersコントローラーの`show`アクションを動かします。showアクションへのルーティングは、以下のように書きます。
+
+```ruby
+  Rails.application.routes.draw do
+    get     '/コントローラー名/:id'        => 'コントローラー名#show'
+  # get   'users/:id'   =>  'users#show'
+  end
+```
+
+このようにルーティングを定義することによって、パスの一部をコントローラーにパラメーターというハッシュ形式で値を送る事が出来ます。これはparamsというメソッドを使用することで取得することが出来ます。コントローラー内で`params[:id]`と記述することにすれば`/users/:id`の`:id`部分の情報を使用することができます
+
+### ２．コントローラーとアクションを作成する
+
+先ほど、マイページを表示するためにusersコントローラーのshowアクションを動かすルーティングを設定しました。続いてusersコントローラーを作成し、showアクションを定義していきます。
+
+* **whereメソッド**
+
+`where`メソッドはActiveRecordメソッドのうちの一つです。`モデル.where(条件)`のように引数部分に条件を指定することで、テーブル内の条件に一致したレコードのインスタンスを配列型で取得できます。
+
+また、`where`メソッドを連続して記述することによって、複数の条件に一致したレコードを取得することもできます。
+
+```sh
+[1] pry(main)> Tweet.where('id < 3')
+  => [＃<Tweet id: 1, image: "test1.jpg", text: "いい景色だ。", created_at: "2014-12-06 00:00:00", updated_at: "2014-12-06 00:00:00", user_id: 1>,＃<Tweet id: 2, image: "test2.jpg", text: "Thank you!", created_at: "2014-12-07 00:00:00", updated_at: "2014-12-07 00:00:00", user_id: 2>]
+  # idが3未満のtweetsテーブルのインスタンスを配列で取得
+
+[2] pry(main)> Tweet.where('id < 3').where(user_id: 1)
+  => [＃<Tweet id: 1, image: "test1.jpg", text: "いい景色だ。", created_at: "2014-12-06 00:00:00", updated_at: "2014-12-06 00:00:00", user_id: 1>]
+  # idが3未満かつuser_idが1のtweetsテーブルのインスタンスを配列で取得
+```
+
+
+* **users_controllerを作成**
+
+```sh
+$ rails g controller users
+# users_controllerと関連するファイルを作成
+```
+
+* **マイページに表示したい情報をshowアクションに定義**
+
+```ruby
+class UsersController < ApplicationController
+    def show
+        @nickname = current_user.nickname
+        @tweets = Tweet.where(user_id: current_user.id).page(params[:page]).per(5).order("created_at DESC")
+    end
+end
+```
+
+### ３．マイページ用のビューファイルを作成する
+
+
+app/views/users/show.html.erb:
+```html
+<div class="contents row">
+    <p><%= @nickname %>さんの投稿一覧</p>
+    <%= render partial: "tweets/tweet", collection: @tweets %>
+    <%= paginate(@tweets) %>
+</div>
+```
+
+
+
+### ４．マイページへのリンクを作成する
+
+マイページへはPicTweetのページ上部から遷移出来るように実装します。
+
+マイページへのパスは`/users/ログイン中のユーザーのid`です。こちらをどう記述するかが鍵になります。
+
+
+```html
+@tweets = Tweet.where(user_id: current_user.id).page(params[:page]).per(5).order("created_at DESC")
+```
+
+
+
+<a name="association"></a>
+## アソシエーションを利用する
+
+Railsには**モデル間の関連付けを管理するアソシエーションという機能**があります。今回の作業ではこのアソシエーションという機能を実装します。
+
+* **アソシエーション**
+
+アソシエーションとはモデル間の関連付けを管理する機能のことで、定義しておくことでモデルをまたいだデータの呼び出しをより簡単に行なうことができるようになります。今回の場合、UserモデルとTweetモデルをアソシエーションで関連付けします。下のヒントを参考にしながら実装を行ないましょう。
+
+### １．アソシエーションを定義する
+アソシエーションを利用するために、まずはモデル間の関係を定義しましょう。アソシエーションを利用するには以下の2つの条件を満たす必要があります。
+
+* **1.モデルクラスに`has_many`や`belongs_to`などの定義がされている**
+
+* **2. 所属する側のテーブルに`所属するクラス名_id`というカラムがある**
+
+Userモデルの視点で考えると、あるuserの作成したtweetが複数個ある状態と言えます。この状態のことを**has many**の関係といい、今回の場合には「User has many Tweets」の状態であると言えます。
+
+この関係をアソシエーションで**定義するためにはUserモデルのモデルファイルを編集**します。「User has many Tweets」の状態を定義するので、Userモデルのモデルファイルに`has_many :tweets`と追記します。
+
+app/models/user.rb:
+```ruby
+  class User < ActiveRecord::Base
+    devise :database_authenticatable, :registerable,
+           :recoverable, :rememberable, :trackable, :validatable
+    has_many :tweets
+  end
+```
+
+また、Tweetモデルの視点で考えると、全てのtweetはいずれかのuserに属している状態と言えます。この状態のことを**belongs toの関係**といい、今回の場合は「Tweet belongs to User」の状態であると言えます。
+
+この関係をアソシエーションで定義するためには**Tweetモデルのモデルファイルを編集**します。「Tweet belongs to User」の関係を定義するので、Tweetモデルのモデルファイルに`belongs_to :user`と追記します。
+
+app/models/tweet.rb:
+```ruby
+class Tweet < ActiveRecord::Base
+    belongs_to :user
+end
+
+```
+
+### ２．アソシエーションを実装する
+以上の作業でアソシエーションを定義することができました。そこで、実際にアソシエーションを利用して実装を行なっていきます。さきほど編集を行なった`users_controller.rb`の`show`アクション部分でのデータの呼び出しにアソシエーションを使用して記述を行ないます。
+
+アソシエーションを定義すると、モデルをまたいだデータの呼び出しをより直感的に行なうことが出来ます。
+
+アソシエーションを使用しない:
+```sh
+$ rails c
+[1] pry(main)> user = User.find(1)
+[2] pry(main)> Tweet.where(user_id: user.id)
+=> [#<Tweet id: 1, image: "http://photo1.jpg", text: "いい景色だ。", created_at: "2014-12-06 09:00:00", updated_at: "2014-12-06 09:00:00", user_id: 1>,
+#<Tweet id: 1, image: "http://photo2.jpg", text: "楽しい思い出は消えない。", created_at: "2014-12-06 10:00:00", updated_at: "2014-12-06 10:00:00", user_id: 1>]
+```
+
+アソシエーションを使用する:
+```sh
+$ rails c
+[1] pry(main)> user = User.find(1)
+[2] pry(main)> user.tweets
+=> [#<Tweet id: 1, image: "http://photo1.jpg", text: "いい景色だ。", created_at: "2014-12-06 09:00:00", updated_at: "2014-12-06 09:00:00", user_id: 1>,
+#<Tweet id: 1, image: "http://photo2.jpg", text: "楽しい思い出は消えない。", created_at: "2014-12-06 10:00:00", updated_at: "2014-12-06 10:00:00", user_id: 1>]
+```
+
+Userモデルに「User has masy Tweets」の状態のアソシエーションを定義したので、`Userモデルのインスタンス.tweets`と記述するだけでそのインスタンスが所持しているツイートを取得することができます。
+
+
+
+<a name="nickname_view"></a>
+## ツイート一覧画面にニックネームを表示
+
+現在、ツイートの一覧画面のツイートの右下には、投稿時に入力した「name」が表示されています。その部分の表示を投稿者の「nickname」を表示するように実装しましょう。
+
+### １．投稿者名を表示するようにビューを変更する
+「nickname」を表示する際にはアソシエーションを利用します。
+
+Tweetモデルに対して「Tweet belongs to User」という形でアソシエーションを定義しているので、`Tweetモデルのインスタンス.user`と記述するだけでそのインスタンスが属しているUserモデルのインスタンスを取得することができます。
+
+アソシエーションを利用しない
+```sh
+$ rails c
+[1] pry(main)> tweet = Tweet.find(1)
+[2] pry(main)> User.find(tweet.user_id)
+```
+
+アソシエーションを利用する
+```sh
+$ rails c
+[1] pry(main)> tweet = Tweet.find(1)
+[2] pry(main)> tweet.user
+```
+
+### ２．ツイートからユーザー情報を先読みする
+* **n+1問題**
+
+モデルを利用してデータベースの情報にアクセスする際にはSQLが発行されます。SQLが発行されるたびにデータベースに対して通信が走るので、SQLが大量に発行されれば処理が重くなります。n+1問題とは、データを呼び出す際に大量のSQLが発行されてしまう問題のことです。
+
+今回の場合、indexアクションで全ツイートを取得する1回に加えて、部分テンプレートである`_tweet.html.erb`でアソシエーションを利用してツイートの数だけユーザー情報を呼び出しています。つまり、現在の状態だとツイート数＋1回SQLが発行されています。この状態のことをn+1問題と言います。
+
+* **includesメソッド**
+
+includesメソッドはn+1問題を解消することができます。指定された関連モデルをまとめて取得することで、SQLの発行回数を減らすことができます。書き方は、`includes(:モデル名)`とします。引数で、関連モデルをシンボル型(接頭に:がつく型)で指定します。
+
+今回、usersテーブルとtweetsテーブルの間には以下の図のような関係があります。tweetsテーブルのレコードは必ず1つのusersテーブルのレコードに属しているので、includesメソッドを利用することでtweetsテーブルのレコードを取得する段階で関連するusersテーブルのレコードも一度に取得することができます。
+
+```ruby
+  class TweetsController < ApplicationController
+
+    def index
+      @tweets = Tweet.includes(:user).page(params[:page]).per(5).order("created_at DESC")
+    end
+
+    #以下省略
+
+  end
+```
+
+
+* **投稿画面のビューを変更する**
+
+* **投稿時のコントローラーでの処理を変更する**
+
+* **tweetsテーブルから不要なカラムを削除する**
+
+ツイートに「name」という情報を保存しなくなったので「name」カラムが不要になりました。
+そこで、テーブルからカラムを削除するためのマイグレーションファイルを作成して、カラムの削除を実行しましょう。そのためには、以下のようにコマンドを実行します。
+
+```sh
+$ rails g migration Removeカラム名From削除元テーブル名 削除するカラム名:型
+```
+
+```sh
+$ rails g migration RemoveNameFromTweets name:string
+# マイグレーションファイルの作成
+
+$ rake db:migrate
+# マイグレーションの実行
+
+```
+
+
+<a name="delete_tweet"></a>
+## ツイートの削除機能を追加する
+
+### １．ツイートを削除するためのルーティングを設定する
+ツイート削除機能を実装するためにまずはルーティングを定義していきます。ツイートを削除する際にはツイートごとに固有のパスが発行されるので、ユーザーのマイページを作成したときと同様に少し特別なルーティングが必要になります。
+
+また、ツイートの削除を行なう際には`delete`というHTTPメソッドを利用します。
+
+* **deleteメソッド**
+
+HTTPリクエストにはいくつかの種類があり、これまでに`get`メソッドと`post`メソッドを学習しました。
+
+`delete`メソッドは情報の削除を行なう際に利用するHTTPメソッドです。今回の場合、ツイートの削除を行なうので`delete`メソッドを利用します。また、
+ツイートの削除を行なう際には、tweetsコントローラーのdestroyアクションを動かします。
+
+config/routes.rb
+```ruby
+Rails.application.routes.draw do
+  devise_for :users
+    # 省略
+
+    delete 'tweets/:id' => 'tweets#destroy' #ツイートを削除する
+
+    # 省略
+end
+```
+
+### ２．削除ボタンをビューに追加する
+
+ツイートを削除するためにビューファイルを編集して削除ボタンを追加します。今回は、`link_to`メソッドを使用しましょう。削除ボタンはツイートの表示画面の右上に配置されます。また、自分が投稿したツイートにのみ表示されるようにします。
+
+`link_to`メソッドを実装する際には`rake routes`コマンドを使用して、パスを確認する必要があります。
+
+```sh
+$ rake routes
+                  Prefix Verb   URI Pattern                    Controller#Action
+
+                    root GET    /                              tweets#index
+                  tweets GET    /tweets(.:format)              tweets#index
+              tweets_new GET    /tweets/new(.:format)          tweets#new
+                         POST   /tweets(.:format)              tweets#create
+                         DELETE /tweets/:id(.:format)          tweets#destroy
+                         GET    /users/:id(.:format)           users#show
+```
+
+
+項目名 | 意味
+- | -
+Prefix | 「Prefix」はルーティングの名前を表しています。「Prefix」は設定を行わなくても、自動的に割り当てられますが、自ら設定することもできます。
+Verb   | 「Verb」はHTTPメソッドを表しています。右側に表示されているパスにどのHTTPメソッドでアクセスするかを示しています。
+URI Pattern |「URI Pattern」はルーティングのパスを表しています。このパスにアクセスされた際に、指定のコントローラーとアクションで処理が行われます。
+Controller#Action |  「Controller#Action」は指定したパスにアクセスした際に処理が行われるコントローラーとアクションを表しています。#以前がコントローラー名、#以後がアクション名を示しています。
+
+
+```html
+    <% if user_signed_in? && current_user.id == tweet.user_id %>
+      <div class="more">
+        <span><%= image_tag 'arrow_top.png' %></span>
+        <ul class="more_list">
+          <li>
+            <%= link_to '削除', "/tweets/#{tweet.id}", method: :delete %>
+         </li>
+        </ul>
+      </div>
+    <% end %>
+```
+
+### ３．destroyアクションをコントローラーに定義する
+
+ツイートを削除する際にはtweetsコントローラーのdestroyアクションを動かします。
+
+* **destroyメソッド**
+
+ActiveRecordメソッドのうちの一つで、インスタンスに対してそのレコードを削除する際に使うことができます。ターミナルで実行して確認してみましょう。
+
+```sh
+  $ rails c
+  [1] pry(main)> tweet = Tweet.find(#今あるtweetsテーブルのid)
+  => #<Tweet:0x007ff621357720 id: 1, name: "george", text: "いい景色だ", image: "http://photo1.jpg", created_at: Thu, 16 Apr 2015 05:41:20 UTC +00:00, updated_at: Thu, 16 Apr 2015 05:41:20 UTC +00:00, user_id: 1>]
+  [2] pry(main)> tweet.destroy
+
+     (0.2ms)  BEGIN
+    SQL (1.6ms)  DELETE FROM `tweets` WHERE `tweets`.`id` = 1
+     (0.3ms)  COMMIT
+  => #<Tweet:0x007ff621357720 id: 1, name: "george", text: "いい景色だ", image: "http://photo1.jpg", created_at: Thu, 16 Apr 2015 05:41:20 UTC +00:00, updated_at: Thu, 16 Apr 2015 05:41:20 UTC +00:00, user_id: 1>]
+```
+
+
+tweets.controller.rb:
+```ruby
+    # ツイートを削除する
+    def destroy
+        tweet = Tweet.find(params[:id])
+        if tweet.user_id == current_user.id
+            tweet.destroy
+        end
+    end
+```
+
+
+### ４．削除後のビューを追加する
+
+ルーティングとコントローラーの編集が終わったので、続いてビューファイルの追加を行ないます。このビューファイルはツイートの削除を行なったあとに呼び出されるビューファイルになります。
+
+** app/views/tweets/destroy.html.erb ** を作成
+
+app/views/tweets/destroy.html.erb
+```html
+  <div class="contents row">
+    <div class="success">
+      <h3>
+        削除が完了しました。
+      </h3>
+      <a class="btn" href="/">投稿一覧へ戻る</a>
+    </div>
+  </div>
+```
+
+
+
+
+
+
+<a name="edit_tweet"></a>
+## ツイートの編集機能を追加する
+今回の作業ではツイートの編集機能を実装します。編集を行なう際には編集ページを用意して、そのページから編集を行なうようにします。
+
+### １．ツイート編集画面のルーティングを設定する
+ツイートを編集する際は、ツイートを編集するための画面に遷移したあとに、ツイートの編集を行ないます。今回の作業では、編集画面へ遷移するためのルーティングを設定します。
+
+編集画面への遷移にはコントローラーtweetsコントローラーのeditアクションを動かします。また、編集画面のパスはツイートごとに異なるものになるので、destroyメソッドの時と同じように`:id`のような書き方を利用します。
+
+```ruby
+    get   'tweets/:id/edit'  => 'tweets#edit'
+```
+
+### ２．編集ボタンをビューに追加する
+
+ツイートを編集する画面に遷移するためのボタンを作成します。編集ボタンは、削除ボタンの上に表示されるようにしましょう。削除ボタンと同じように、`link_to`メソッドを使用します。
+
+app/views/tweets/_tweet.html.erbを以下のように編集する
+```html
+  <li>
+      <%= link_to '編集', "/tweets/#{tweet.id}/edit", method: get %>
+  </li>
+```
+
+
+### ３．editアクションをコントローラーに定義する
+現在実装している編集して更新、という流れは、入力して新規投稿、という流れと似ています。新規作成時と違うのは、編集→更新の場合は既に存在しているレコードを選択して中身を書き換えるという点です。そのため、`edit`アクションでは編集したいレコードを`@tweet`に代入し、編集画面で利用できるようにします。
+
+```ruby
+    # ツイートを編集する
+    def edit
+        @tweet = Tweet.find(params[:id])
+    end
+```
+
+### ４．編集画面のビューファイルを作成する
+ルーティングとコントローラーの編集が終わったので、ビューファイルを作成します。このビューはツイートを編集するためのビューファイルです。そのため、ツイートの投稿画面と同様に情報を入力するためのフォームが必要になります。
+
+入力情報の送信先は`/tweets/編集するツイートのid`となります。また、情報を送信する際には`patch`というHTTPメソッドを使用します。
+
+* ** patchメソッド**
+
+HTTPリクエストには`get`、`post`、`delete`メソッドがあることは学習しました。`patch`メソッドは情報の更新を行なう際に使用します。今回はツイート情報を更新する機能を実装するので、`patch`メソッドを使用します。
+
+* **HTTPリクエスト**
+
+これまでに4種類のHTTPリクエストのメソッドについて学習しました。Railsではこれら4つのメソッドを利用して開発を行ないます。役割や機能を以下の表にまとめたので再度確認しましょう。
+
+メソッド  |  役割
+- | -
+get |サーバーからブラウザに情報を返す。単にウェブサイトを閲覧する際にはこのメソッドが利用されている。
+post |   ブラウザからサーバーに情報を送信し、サーバーに情報を保存する。情報の登録などの際に、サーバーに情報を送信するために利用される。
+delete |  ブラウザからサーバーに情報を送信し、サーバーの情報を削除する。アカウントの削除などの際に、サーバー内のデータを削除するために利用される。
+patch  | ブラウザからサーバーに情報を送信し、サーバー内の情報を置き換える。登録情報の更新などの際に、サーバー内のデータを更新するために利用される。
+put | メソッド名は違うが、patchと同じ役割を持っている。rails3まではputを使っていたが、rails4からはpatchに移行したためカリキュラム内では使用しない。
+
+**app/views/tweets/edit.html.erb** を作成
+
+```html
+<div class="contents row">
+  <%= form_tag('/tweets/#{@tweet.id}', method: :patch) do %>
+    <h3>
+      編集する
+    </h3>
+    <input placeholder="Image Url" type="text" name="image" value="<%= @tweet.image %>" autofocus="true"></input>
+    <textarea cols="30" name="text" placeholder="text" rows="10"><%= @tweet.text %></textarea>
+    <input type="submit" value="SENT">
+  <% end %>
+</div>
+```
+
+
+### ５．ツイートの更新を行なうためのルーティングを設定する
+ツイートの編集画面を作成することができたので、続いてツイートの更新機能を実装していきます。まずはツイートの更新を行なうためのルーティングを設定していきます。
+
+ツイートを更新する際には`/tweets/編集するツイートのid`に`patch`メソッドでアクセスします。このパスにアクセスした際にtweetsコントローラーのupdateアクションが動くようにします。
+
+```ruby
+    patch 'tweets/:id' => 'tweets#update' # ツイートを更新する
+```
+
+
+### ６．updateアクションをコントローラーに定義する
+
+ツイートを更新する際にはtweetsコントローラーのupdateアクションを使用します。updateアクション内ではActiveRecordメソッドの`update`を使用します。
+
+* **updateメソッド**
+
+`update`はActiveRecordメソッドのうちの一つです。`update`メソッドはモデルのインスタンスに対して使用することで、引数内の情報にレコードを更新することができます。
+
+`update`メソッドの引数は、`update(カラム名: 更新する情報)`という形で指定します。同時に複数の情報を更新する場合には`update(カラム1: 更新情報1, カラム2: 更新情報2)`という形で使用することができます。`create`メソッドと似ていますね。
+
+```ruby
+    # ツイートを更新する
+    def update
+        tweet = Tweet.find(params[:id])
+        if tweet.user_id == current_user.id
+            tweet.update(tweet_params)
+        end
+    end
+```
+
+
+
+### ７．更新後のビューファイルを追加する
+
+ルーティングとコントローラーの編集が終わったので、続いてビューファイルの追加を行ないます。このビューファイルはツイートの更新を行なったあとに呼び出されるビューファイルになります。
+
+** app/views/tweets/update.html.erb** を作成する。
+
+```html
+  <div class="contents row">
+    <div class="success">
+      <h3>
+        更新が完了しました。
+      </h3>
+      <a class="btn" href="/">投稿一覧へ戻る</a>
+    </div>
+  </div>
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
