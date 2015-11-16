@@ -21,6 +21,7 @@
 * [ツイート一覧画面にニックネームを表示](#nickname_view)
 * [ツイートの削除機能を追加する](#delete_tweet)
 * [ツイートの編集機能を追加する](#edit_tweet)
+* [moovi](https://github.com/byam/Programming-Notes/tree/master/rails-note/moovi.rmdown)
 
 <a name="install"></a>
 ## Install Rails
