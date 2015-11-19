@@ -22,7 +22,7 @@
 * [ツイートの削除機能を追加する](#delete_tweet)
 * [ツイートの編集機能を追加する](#edit_tweet)
 * [moovi](https://github.com/byam/Programming-Notes/tree/master/rails-note/moovi.mdown)
-
+* [moovi2](https://github.com/byam/Programming-Notes/tree/master/rails-note/moovi2.mdown)
 <a name="install"></a>
 ## Install Rails
 

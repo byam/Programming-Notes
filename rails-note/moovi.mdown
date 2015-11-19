@@ -1,1 +1,669 @@
-moovi
+
+# 映画レビューサイトmooovi
+* [Install moovi](#install_moovi)
+* [スクレイピング](#scraping)
+* [映画.comからのスクレイピング](#eiga_scraping)
+* [データベースに映画のデータを保存する](#eiga_db_save)
+* [トップページ](#toppage)
+
+<a name="install_moovi"></a>
+## Install moovi
+
+### Download mooovi from github
+
+```sh
+$ cd ~/projects
+
+$ git clone https://github.com/we-b/mooovi.git
+```
+
+### Rails Install
+
+```sh
+$ cd ~/projects/moovi
+
+# Gemをインストール
+$ bundle install
+```
+
+### データベースをつくる
+
+* **本章での注意点**
+
+本章を進めていく中で、ターミナル上で「rails ~」や「rake ~」というコマンドを実行することがあります。
+
+その際は、必ず接頭にbundle execという文字をつけて実行してください
+
+* ** bundlerによるgem管理**
+
+bundlerを利用してインストールしたgemは、Railsの各プロジェクトではなく、Rubyのバージョンごとにある保存場所にインストールされています。
+
+`bundle show [gemの名前]`というコマンドを実行するとbundlerでインストールしたgemがどこに保存されているのか確認することができます。
+試しに、railsがどこに保存されているのか確認してみましょう。
+
+bundle show rails コマンドを実行すると、railsの保存場所を確認することができます。
+```sh
+$ bundler show rails
+/Users/Bya/.rbenv/versions/2.1.3/lib/ruby/gems/2.1.0/gems/rails-4.2.5
+# bundler によって保存されるgemの保存場所を表示
+```
+bundle installを実行した際、bundlerは先ほどの保存場所からrailsプロジェクトのGemfileに書いてあるgemだけを読み込み、使える状態にしてくれます。
+
+* **bundle execコマンド**
+
+bundle exec は2つ以上のrailsアプリケーションを同じバージョンのRubyを利用して作成している際に必要となるコマンドです。
+
+rakeコマンドやrailsコマンドなどはそれぞれrake、railsというgemによって使うことができますが、
+
+開発しているプロジェクトが2つ以上ある場合に「rake db:migrate」などのコマンドを打ち込んでしまうとエラーが起きることがあります。
+
+これは同じRubyのバージョンで複数のアプリケーションを開発していると、同じ名前のgemでもアプリケーションごとにバージョンが異なることがあるためです。
+例えばアプリケーション1とアプリケーション2の両方をRubyのバージョン2.0で開発しているとします。
+
+アプリケーション1をターミナルでrake db:migrateしたい際には、bundle execコマンドを接頭につけてrakeコマンドを実行すると、Gemfileで指定した環境下のrakeのコマンドとして実行されます。
+
+```sh
+$ bundle exec rake db:migrate
+# 必ず最初に bundle exec をつけて実行する。
+```
+
+* **データベースの作成**
+
+```sh
+$ bundle exec rake db:create
+# データベースの作成
+```
+
+上記のコマンドによってconfig/database.ymlの設定に基いてデータベースが作成されたはずです。
+
+* ** サーバーを起動**
+```sh
+$ bundle exec rails s
+# サーバーを起動
+```
+
+
+
+<a name="scraping"></a>
+## スクレイピング
+
+スクレイピングを使って映画の情報を取得しましょう。
+
+### スクレイピングとは
+スクレイピングとは、ウェブサイト上のHTMLからある特定のデータを抜き出す処理のことを言います。
+外部のサーバーからデータを抽出し、集計をしたりするときに役立ちます。
+
+### スクレイピングする
+では実際にスクレイピングでHTML内のデータを取得してみましょう。スクレイピングには**Mechanize**というGemが必要です。
+
+* **Mechanize**
+
+Mechanizeはスクレイピングを行うためのGemです。MechanizeのGemを入れると**Mechanizeクラス**が使えるようになります。このMechanizeクラスにはスクレイピングをするための様々なメソッドが用意されています。
+
+では、Mechanizeを入れてみましょう。MechanizeはGemなのでGemfileにMechanizeを使用するという記述をします。
+
+Gemfile
+```ruby
+gem 'mechanize'
+```
+
+Gem install:
+```sh
+$ bundle install
+```
+
+* **Mechanizeクラスを使ってみよう**
+
+Mechanizeを使ってスクレイピングをするには、まずMechanizeクラスのインスタンスを生成します。
+
+[例]
+```ruby
+agent = Mechanize.new
+# Mechanizeクラスのインスタンスを生成
+```
+
+次にMechanizeクラスのインスタンスメソッドgetメソッドを使ってスクレイピングしたいウェブサイトのHTMLを取得します。
+
+### ウェブサイトのHTML情報を取得する
+
+* **  getメソッド**
+
+getメソッドはMechanizeクラスのインスタンスメソッドです。get("スクレイピングしたいウェブサイトのURL")と引数にURLの文字列を指定することで、そのURLのウェブサイトのHTMLを取得します。
+
+
+[例]
+```ruby
+agent = Mechanize.new
+page = agent.get("http://eiga.com/") # 映画.comのHTMLを取得
+```
+ここで取得できた`page`は単なるHTMLの文字列ではなくその**ウェブサイトのHTMLの情報を持ったMechanize::Pageオブジェクトです**。
+
+[例]
+```ruby
+agent = Mechanize.new
+page = agent.get("http://eiga.com/") # 映画.comのHTMLを取得
+puts page
+# <Mechanize::Page:0x007fcdda803dd8>
+```
+`page`がMechanize::Pageオブジェクトであることが確認できました
+
+
+### HTML情報から指定のタグ要素の情報を検索する
+
+特定のhtmlタグ情報を取得するには searchメソッド を使います。
+
+* **searchメソッド**
+
+searchメソッドはgetメソッドで取得したページの情報が入ったオブジェクトに対して使用します。これを使うと取得したウェブサイトのHTML情報の中から指定したHTML要素の内容を検索できます。
+該当するHTMLのタグ要素が1つでも、返り値は配列の形式で返ってきます。
+
+searchメソッドは以下のような使い方をします。
+```ruby
+elements = Mechanize::Pageオブジェクト.search('セレクタ')
+```
+
+では、例として映画.comのページ(http://eiga.com/) からh1要素のHTMLの情報を取得してみます。
+```ruby
+agent = Mechanize.new
+page = agent.get("http://eiga.com/")
+elements = page.search('h1') # h1要素を検索
+puts elements
+
+
+#<h1>映画のことなら映画.com 最新映画情報・プレゼント・試写会・映画ニュース・映画ファン必見！</h1>
+
+```
+
+
+例：
+```ruby
+require 'mechanize'
+
+agent = Mechanize.new
+page = agent.get("http://eiga.com/")
+elements = page.search('li a') # li要素の下のa要素を検索
+puts elements[0]
+
+# <a href="/movie/80316/"><strong>近キョリ恋愛</strong></a>
+```
+
+
+### HTML情報からテキストを抜き出そう
+
+* ** inner_textメソッド**
+
+searchメソッドで得られたHTML情報のテキストを取得したい場合、inner_textメソッドを使います。
+
+
+```ruby
+agent = Mechanize.new
+page = agent.get("http://eiga.com/")
+elements = page.search('li a')
+
+elements.each do |ele|
+    puts ele.inner_text
+end
+```
+
+result:
+```sh
+近日公開映画
+近キョリ恋愛
+山下智久
+小松菜奈
+水川あさみ
+ヘラクレス
+ドウェイン・ジョンソン
+# 多すぎるので以下略
+```
+
+### HTML情報から属性の値を抜き出そう
+
+* **get_attributeメソッド**
+
+aタグ要素のHTMLはリンク先のURLを値とする属性hrefを持っています。このようなHTMLの属性の値を取得したい場合、get_attributeメソッドを使います。`get_attribute(属性)`で指定した属性の値を取得できます。また、`.get_attribute(属性)`は`[:属性]`と簡略化して書くこともできます。
+
+```ruby
+  agent = Mechanize.new
+  page = agent.get("http://eiga.com/")
+  elements = page.search('li a')
+
+  elements.each do |ele|
+    puts ele.get_attribute('href') # puts ele[:href]としても良い
+  end
+```
+
+
+### スクレイピングの手順まとめ
+
+* Mechanizeクラスのインスタンスを生成する
+* Mechanizeクラスのインスタンスメソッドget(情報を取得したいウェブサイトのURL)で、ウェブサイトのHTML情報を取得する
+* 欲しいデータのあるタグ要素をsearchメソッドで指定して取得する
+* 取得したタグ要素のHTML情報にたいしてinner_textメソッド、またはget_attributeメソッドを使って欲しい値を取得する
+
+
+<a name="eiga_scraping"></a>
+## 映画.comからのスクレイピング
+link: http://eiga.com/now/
+
+### 作品名を取得しよう
+
+```ruby
+require 'mechanize'
+
+agent = Mechanize.new
+page = agent.get("http://eiga.com/now/")
+elements = page.search('.m_unit h3 a')[0, 20]
+
+elements.each do |ele|
+    puts ele.inner_text
+end
+```
+
+### 作品画像のURLを取得しよう
+
+```ruby
+require 'mechanize'
+
+agent = Mechanize.new
+page = agent.get("http://eiga.com/now/")
+elements = page.search('.m_unit div a img')
+
+elements.each do |ele|
+    puts ele.get_attribute('src')
+end
+```
+
+### 個別ページの作品画像のURLを取得しよう
+
+```ruby
+require 'mechanize'
+
+agent = Mechanize.new
+page = agent.get("http://eiga.com/movie/82950/")
+elements = page.search('.pictBox img')
+
+elements.each do |ele|
+    puts ele.get_attribute('src')
+end
+```
+
+### 20件分すべての映画の個別ページから作品画像のURLを取得しよう
+
+1. [映画.com(上映中の映画)](http://eiga.com/now/)で表示されている映画の個別ページのリンクを取得する
+2. 取得した個別ページのリンク１つ１つに対してスクレイピングをする
+
+```ruby
+require 'mechanize'
+
+def scraping_image(link)
+    agent = Mechanize.new
+    page = agent.get(link)
+    image_url = page.at('.pictBox img').get_attribute('src')
+    return image_url
+end
+
+links = [] # 個別ページのリンクを保存する配列
+agent = Mechanize.new
+current_page = agent.get("http://eiga.com/now/")
+elements = current_page.search('.m_unit h3 a')
+elements.each do |ele|
+    links << ele.get_attribute('href')
+end
+
+links.each do |link|
+    puts scraping_image('http://eiga.com' + link)
+end
+```
+
+
+
+<a name="eiga_db_save"></a>
+## データベースに映画のデータを保存する
+
+これで映画レビューサイトで必要な映画の情報「作品名」と「作品画像」がスクレイピングで取得できました。あとは得たこの情報をデータベースに入れるだけです。
+
+### 映画情報のモデルを作成
+映画の情報を扱うモデルとしてProductモデルを作成しましょう。このProductモデルに対応するproductsテーブルは以下のカラムを持っています。
+
+カラム名  |  型  | 情報
+- | - | -
+title  | String | 作品名
+image_url |  Text |   作品画像のURL
+
+* **Productモデルの作成**
+
+```sh
+$ bundle exec rails g model product
+```
+
+* ** マイグレーションファイルにカラムの情報を追記する**
+
+20151116103938_create_products.rb:
+```ruby
+class CreateProducts < ActiveRecord::Migration
+  def change
+    create_table :products do |t|
+      t.string :title
+      t.text :image_url
+
+      t.timestamps null: false
+    end
+  end
+end
+```
+
+* **マイグレーションの実行**
+
+マイグレーションファイルの作成が完了したので、このマイグレーションファイルでの変更をデータベースに適応させましょう。ターミナルで`bundle exec rake db:migrate`コマンドを打ち込みます。
+
+```sh
+$ bundle exec rake db:migrate
+# => マイグレーションの実行
+```
+
+
+### 映画情報をデータベースに保存するメソッドを書こう
+
+**mooovi > app > models** 内に**scraping.rb**というファイルを作成します。
+
+* **reload!**
+
+コンソール起動中にコードを修正・追記した際、コンソールはリアルタイムで変更内容を反映してくれません。
+その際は通常、一度exitして再度 rails c コマンドを打ちコンソールを再起動するという手順を踏みますが、 `reload!` コマンドを実行すると毎回exitせずともコンソールがコードの変更内容を読み込んでくれるので大変便利です。
+
+今後コンソールで何かを実行する前には `reload!` コマンドの実行を忘れないようにしてください。
+以下では、先ほど実行したScrapingクラスのクラスメソッド movie_urls を例にとって実際の動作を示しています。
+
+scraping.rb:
+```ruby
+class Scraping
+  def self.movie_urls
+    #①linksという配列の空枠を作る
+    links = []
+    #②Mechanizeクラスのインスタンスを生成する
+    agent = Mechanize.new
+    #③映画の全体ページのURLを取得
+    current_page = agent.get("http://eiga.com/now/")
+    #④全体ページから映画20件の個別URLのタグを取得
+    elements = current_page.search('.m_unit h3 a')
+    #⑤個別URLのタグからhref要素を取り出し、links配列に格納する
+    elements.each do |ele|
+        links << ele.get_attribute('href')
+    end
+    #⑥get_productを実行する際にリンクを引数として渡す
+    links.each do |link|
+        get_product("http://eiga.com/now/" + link)
+    end
+  end
+
+  def self.get_product(link)
+    #⑦Mechanizeクラスのインスタンスを生成する
+    agent = Mechanize.new
+    #⑧映画の個別ページのURLを取得
+    page = agent.get(link)
+    #⑨inner_textメソッドを利用し映画のタイトルを取得
+    title = page.at('.moveInfoBox h1').inner_text
+    #①⓪image_urlがあるsrc要素のみを取り出す
+    image_url = page.at('.pictBox img')[:src]
+    #①①newメソッド、saveメソッドを使い、 スクレイピングした「映画タイトル」と「作品画像のURL」をproductsテーブルに保存
+    product = Product.new(title: title, image_url: image_url)
+    product.save
+  end
+end
+```
+
+
+### 同じ映画の情報はデータベースに新規で保存できないようにしましょう
+いまスクレイピングのメソッド`movie_urls`を2回実行すると同じ映画が2つずつ保存されてしまいます。つまり、メソッドが実行されるたびに同じ映画がデータベース上に増えていってしまいます。これではまずいので同じタイトルの映画情報はデータベースに保存しないようにしましょう。
+
+* **first_or_initializeメソッド**
+
+whereメソッドとともに使うことで、whereで検索した条件のレコードがあればそのレコードのインスタンスを返し、なければ新しくインスタンスを作るメソッドです。
+
+【例】
+ニックネームが"Shinbo"のユーザーがすでに保存されていれば取得し、保存されていなければ生成する
+```ruby
+user = User.where(nickname: "Shinbo").first_or_initialize
+user.save
+```
+
+scraping.rb:
+```ruby
+product = Product.where(title: title, image_url: image_url).first_or_initialize
+```
+
+
+### [映画.com(上映中の映画)](http://eiga.com/now/)ですべてのページから映画の情報を取得できるようにしましょう
+
+scraping.rb:
+```ruby
+class Scraping
+  def self.movie_urls
+    agent = Mechanize.new
+    links = []
+
+    # パスの部分を変数で定義
+    next_url = "/now/"
+
+    while true do
+
+      current_page = agent.get("http://eiga.com" + next_url)
+      elements = current_page.search('.m_unit h3 a')
+      elements.each do |ele|
+        links << ele.get_attribute('href')
+      end
+
+      # 「次へ」を表すタグを取得
+      next_link = current_page.at('.next_page')
+      # そのタグからhref属性の値を取得
+      next_url = next_link.get_attribute('href')
+
+      # next_urlがなかったらwhile文を抜ける
+      break unless next_url
+    end
+
+    links.each do |link|
+      get_product('http://eiga.com' + link)
+    end
+  end
+
+  def self.get_product(link)
+    #⑦Mechanizeクラスのインスタンスを生成する
+    agent = Mechanize.new
+    #⑧映画の個別ページのURLを取得
+    page = agent.get(link)
+    #⑨inner_textメソッドを利用し映画のタイトルを取得
+    title = page.at('.moveInfoBox h1').inner_text
+    #①⓪image_urlがあるsrc要素のみを取り出す
+    image_url = page.at('.pictBox img')[:src]
+    #①①newメソッド、saveメソッドを使い、 スクレイピングした「映画タイトル」と「作品画像のURL」をproductsテーブルに保存
+    product = Product.where(title: title, image_url: image_url).first_or_initialize
+    product.save
+  end
+end
+```
+
+
+### Productsテーブルに「監督名」、「あらすじ」、「公開日」のカラムを追加しましょう
+
+映画の情報は「監督名」や「あらすじ」、「公開日」など様々なものがあります。スクレイピングするならこれらの情報もまとめて取得しておきたいところです。
+
+カラム名  |  型  | 情報
+- | - | -
+director  |  string | 監督名
+detail | text  |  あらすじ
+open_date |  string | 公開日
+
+* **rails generate migrationコマンド**
+
+テーブルにカラムを追加したり、削除するような**テーブルの構造を変えたいときもマイグレーションファイルを作成します**。作成には`rails generate migration`コマンドを使用します。このコマンドはマイグレーションファイルを新しく作るためのものです。
+
+```sh
+$ bundle exec rails g migration AddRateToProducts
+# => マイグレーションファイルの作成
+```
+
+メソッドchangeの中にテーブル構造の変更を書きます。
+例えば、BooksテーブルにInteger型のカラムpriceを追加するため
+
+```ruby
+class AddPriceToBooks < ActiveRecord::Migration
+  def change
+    add_column :books, :price, :integer
+  end
+end
+```
+
+
+* **add_column**
+
+add_columnをマイグレーションファイルのchangeメソッド内に書くとカラムの追加ができます。記述方法は以下です。
+
+```ruby
+add_column :テーブル名, :カラム名, :カラムの型
+add_column :テーブル名, :カラム名, :カラムの型
+```
+
+* ** remove_column**
+
+マイグレーションファイルのchangeメソッドではカラムを追加だけでなく削除もできます。remove_columnをマイグレーションファイルのchangeメソッド内に書くとカラムの削除ができます。記述方法は以下です。
+
+```ruby
+remove_column :テーブル名, :カラム名, :カラムの型
+```
+
+* **マイグレーションの実行**
+
+```sh
+$ bundle exec rake db:migrate
+```
+
+このようにテーブルの変更を行うときは必ずマイグレーションファイルを作成しましょう。また、分からなくなった際はrails generate migrationコマンドを振り返りましょう。
+
+
+* **Productsテーブルに以下のカラムを追加する**
+
+カラム名  |  型  | 情報
+- | - | -
+director |   string | 監督名
+detail | text  |  あらすじ
+open_date |  string | 公開日
+
+* カラムを追加するために`rails g migrationコマンド`でマイグレーションファイルを作成しましょう
+* `add_column`を使用してテーブルに指定のカラムを追加するような記述をマイグレーションファイルにしましょう
+* マイグレーションファイルが出来たら、`bundle exec rake db:migrateコマンド`でマイグレーションファイルを実行します
+
+
+### 映画の個別ページから「監督名」、「あらすじ」、「公開日」を取得してデータベースに保存しましょう
+
+```ruby
+class Scraping
+  def self.movie_urls
+    agent = Mechanize.new
+    links = []
+    next_url= "/now/"
+
+    while true
+      current_page = agent.get("http://eiga.com" + next_url)
+      elements = current_page.search('.m_unit h3 a')
+      elements.each do |ele|
+        links << ele.get_attribute('href')
+      end
+
+      next_link = current_page.at('.next_page')
+      next_url = next_link.get_attribute('href')
+
+      break unless next_url
+    end
+    links.each do |link|
+      get_product('http://eiga.com' + link)
+    end
+  end
+
+  def self.get_product(link)
+    agent = Mechanize.new
+    page = agent.get(link)
+    title = page.at('.moveInfoBox h1').inner_text
+    image_url = page.at('.pictBox img')[:src] if page.at('.pictBox img')
+    director = page.at('.f span').inner_text if page.at('.f span')
+    detail = page.at('.outline p').inner_text
+    open_date = page.at('.opn_date strong').inner_text if page.at('.opn_date strong')
+
+    product = Product.where(title: title, image_url: image_url).first_or_initialize
+    product.director = director
+    product.detail = detail
+    product.open_date = open_date
+    product.save
+  end
+end
+```
+
+
+
+
+<a name="toppage"></a>
+## トップページ
+
+トップページでは、スクレイピングで追加した作品を、追加された順に20件表示します。
+
+### コントローラーで最新順の作品データを取得しよう
+
+* **orderメソッド**
+
+`orderメソッド`は、データベースからデータ取得時にデータをどう並び替えるかというのが指定できます。
+例えば、「id順に並べたいとき」や「作成日順に並べたい」ときに使います。
+
+引数には並び替える基準のカラムと、DESC(降順)かASC(昇順)のどちらかの2つを指定することにより順番を指定して取得することができます。
+
+```ruby
+モデル名.order('カラム名 順序')
+```
+
+実行例 | 詳細
+-|-
+User.order('id DESC') |  idを降順でユーザデータ取得
+User.order('id ASC')   | idを昇順でユーザデータ取得
+
+
+* **limitメソッド**
+
+`limitメソッド` はデータをいくつ取得するかというのが指定できるメソッドで、
+引数には取得したい件数を指定します。
+
+```ruby
+モデル名.limit(取得件数)
+
+User.limit(10)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

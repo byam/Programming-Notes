@@ -1,0 +1,953 @@
+* [準備](#preparation)
+    * [データベースを削除](#preparation_db_delete)
+    * [gitから新しくmoooviをクローンしよう](#preparation_git_clone)
+    * [bundle installを実行しよう](#preparation_bundle_install)
+    * [データベースを作成しよう](#preparation_db_create)
+    * [サーバーを立ち上げられるようにしよう](#preparation_rails_server)
+* [スクレイピング](#scraping)
+    * [映画作品のモデルを作成しよう](#scraping_create_model)
+    * [映画.comから映画情報をスクレイピングしよう](#scraping_eiga)
+    * [重複した映画の情報はデータベースに保存できないようにしよう](#scraping_data_not_overlap)
+    * [映画.comの上映中の映画すべてをスクレイピングしよう](#scraping_eiga_all)
+* [基本機能](#basic_function)
+    * [トップページを表示させよう](#basic_function_top_page)
+    * [トップページに最新順で映画作品の一覧を表示しよう](#basic_function_top_page_newest)
+    * [作品ページを表示しよう](#basic_function_product)
+    * [検索画面を表示しよう](#basic_function_search_page)
+    * [検索機能を実装しよう](#basic_function_search_function)
+    * [レビューのモデルを作成しよう](#basic_function_review_model)
+    * [投稿画面を表示させよう](#basic_function_review_page)
+    * [映画作品へのレビューの一覧を作品ページで見れるようにしよう](#basic_function_review_page_shows)
+* [応用機能](#application)
+    * [レビューの評価を星で表示する](#application_)
+    * [投稿数ランキングの表示](#application_)
+    * [ユーザー登録機能](#application_)
+    * [ログイン機能](#application_)
+    * [ログアウト機能](#application_)
+    * [アイコン画像のアップロード機能](#application_)
+    * [マイページ](#application_)
+
+<a name="preparation"></a>
+## 準備
+
+<a name="preparation_db_delete"></a>
+### データベースを削除
+* **rake db:drop**
+
+`rake db:drop`コマンドはそのディレクトリのアプリケーションのデータベースを削除するコマンドです。rake db:createコマンドの反対のコマンドになります。
+
+* **rake db:migrate:reset**
+
+`rake db:migrate:reset`コマンドは、rake db:drop, rake db:create, rake db:migrateを一度に行なってくれる便利なコマンドです。
+
+例えば、一度誤ったmigrationファイルを実行してしまったり、レコードをすべて削除しやり直したいときなどに利用します。
+
+今回は、もう一度最初からmoooviを作り直していくのでターミナルでmoooviディレクトリに移動して、以下のコマンドを打ち込みデータベースを削除しましょう。
+
+```sh
+$ bundle exec rake db:drop
+```
+
+<a name="preparation_git_clone"></a>
+### gitから新しくmoooviをクローンしよう
+今回クローンするフォルダは前回moooviをクローンしたときと違って以下の点が異なります。
+
+* コントローラにはメソッドが何も書いていない
+* routes.rbにルーティングが何も書いていない
+* ビューに元から書いてあったerbのソースコードが書いていない
+* モデルは何も生成していない
+
+```sh
+$ git clone -b rails2-5 https://github.com/we-b/mooovi.git mooovi2
+```
+
+<a name="preparation_bundle_install"></a>
+### bundle installを実行しよう
+railsアプリケーションを使用するためには、まずそのアプリケーションが指定するgemをインストールする必要がありました。
+
+```sh
+$ bundle install
+```
+
+<a name="preparation_db_create"></a>
+### データベースを作成しよう
+データベースは`config>database.yml`に基づいて作成されます。
+
+```sh
+$ bundle exec rake db:create
+```
+
+<a name="preparation_rails_server"></a>
+### サーバーを立ち上げられるようにしよう
+サーバーを立ち上げるには、データベースを用意しておく必要があります。
+```sh
+$ bundle exec rails s
+```
+
+[http://localhost:3000](http://localhost:3000) を確認する。
+
+
+
+<a name="scraping"></a>
+## スクレイピング
+
+<a name="scraping_create_model"></a>
+### 映画作品のモデルを作成しよう
+まずは映画作品をデータベースに保存するために映画作品用のテーブルProductsテーブルを作成しましょう。
+
+カラム名 |   型  | 情報
+- | - | -
+title  | string | 作品名
+image_url  | text |   作品画像のURL
+director   | string | 監督名
+detail | text  |  あらすじ
+open_date  | string | 公開日
+
+* テーブルを生成するコマンドは`rails g model モデル名(単数形)`です
+```sh
+$ bundle exec rails g model product
+      invoke  active_record
+      create    db/migrate/20151117050631_create_products.rb
+      create    app/models/product.rb
+      invoke    test_unit
+      create      test/models/product_test.rb
+   identical      test/fixtures/products.yml
+```
+
+* カラムの情報を追加するには`マイグレーションファイル`を編集する必要があります
+
+*db/migrate/20151117050631_create_products.rb*:
+```ruby
+class CreateProducts < ActiveRecord::Migration
+  def change
+    create_table :products do |t|
+      t.string :title
+      t.text :image_url
+      t.string :director
+      t.text :detail
+      t.string :open_date
+      t.timestamps
+    end
+  end
+end
+```
+
+* マイグレーションの実行は`bundle exec rake db:migrate`です
+```sh
+$ bundle exec rake db:migrate
+== 20151117050631 CreateProducts: migrating ===================================
+-- create_table(:products)
+   -> 0.0276s
+== 20151117050631 CreateProducts: migrated (0.0277s) ==========================
+```
+
+
+<a name="scraping_eiga"></a>
+### 映画.comから映画情報をスクレイピングしよう
+* スクレイピング用のgemをインストールする
+
+*Gemfile*:
+```ruby
+# 省略、最後に追加する
+
+# スクレイピングをする
+gem 'mechanize'
+```
+
+gemをインストールする
+```sh
+$ bundle install
+```
+* スクレイピングで映画.comの[上映中の映画](http://eiga.com/now/)の1ページ目から映画情報を20件取得する
+
+*scraping.py*
+```ruby
+class Scraping
+  def self.movie_urls
+    agent = Mechanize.new
+    links = []
+    next_url= "/now/"
+
+    current_page = agent.get("http://eiga.com" + next_url)
+    elements = current_page.search('.m_unit h3 a')
+    elements.each do |ele|
+      links << ele.get_attribute('href')
+    end
+
+
+    links.each do |link|
+      get_product('http://eiga.com' + link)
+    end
+  end
+
+  def self.get_product(link)
+    agent = Mechanize.new
+    page = agent.get(link)
+    title = page.at('.moveInfoBox h1').inner_text
+    image_url = page.at('.pictBox img')[:src] if page.at('.pictBox img')
+    director = page.at('.f span').inner_text if page.at('.f span')
+    detail = page.at('.outline p').inner_text
+    open_date = page.at('.opn_date strong').inner_text if page.at('.opn_date strong')
+    puts "#{title}, #{image_url}, #{director}, #{detail}, #{open_date}"
+  end
+end
+```
+
+* 取得した映画情報をProductsテーブルに保存する
+
+*scraping.rb*
+```ruby
+    # 省略
+    product = Product.new(
+      title: title, image_url: image_url, director: director,
+      detail: detail, open_date:open_date)
+    product.save
+    # 省略
+```
+
+
+<a name="scraping_data_not_overlap"></a>
+### 重複した映画の情報はデータベースに保存できないようにしよう
+
+すでに保存されている映画の情報はデータベースに保存されないようにしましょう。
+
+* 一度データベースに保存した映画の情報は保存できないようにする
+
+*scraping.rb*
+```ruby
+    # 省略
+
+    product = Product.where(
+      title: title, image_url: image_url, director: director,
+      detail: detail, open_date:open_date).first_or_initialize
+    product.save
+
+    # 省略
+```
+
+<a name="scraping_eiga_all"></a>
+### 映画.comの上映中の映画すべてをスクレイピングしよう
+
+* [映画.com(上映中の映画)](http://eiga.com/now/)のすべてのページにある映画を取得する
+
+*scraping.rb*
+```ruby
+class Scraping
+  def self.movie_urls
+    agent = Mechanize.new
+    links = []
+    next_url= "/now/"
+
+    while true
+      current_page = agent.get("http://eiga.com" + next_url)
+      elements = current_page.search('.m_unit h3 a')
+      elements.each do |ele|
+        links << ele.get_attribute('href')
+      end
+
+      next_link = current_page.at('.next_page')
+      next_url = next_link.get_attribute('href')
+
+      break unless next_url
+    end
+    links.each do |link|
+      get_product('http://eiga.com' + link)
+    end
+  end
+
+  def self.get_product(link)
+    agent = Mechanize.new
+    page = agent.get(link)
+    title = page.at('.moveInfoBox h1').inner_text
+    image_url = page.at('.pictBox img')[:src] if page.at('.pictBox img')
+    director = page.at('.f span').inner_text if page.at('.f span')
+    detail = page.at('.outline p').inner_text
+    open_date = page.at('.opn_date strong').inner_text if page.at('.opn_date strong')
+    product = Product.where(
+      title: title, image_url: image_url, director: director,
+      detail: detail, open_date:open_date).first_or_initialize
+    product.save
+  end
+end
+```
+
+
+
+<a name="basic_function"></a>
+## 基本機能
+
+レビューの投稿をして、それが見れるという基本的な機能を実装しましょう。
+
+<a name="basic_function_top_page"></a>
+### トップページを表示させよう
+
+rootパス(http://[localhost:3000](http://localhost:3000))にアクセスしたときにmoooviのトップページが表示されるようにしましょう
+
+* rootパスにアクセスしたときのコントローラとアクションを`routes.rb`で設定しましょう
+
+*routes.rb*
+```ruby
+TechReviewSite::Application.routes.draw do
+    root 'products#index'
+end
+```
+
+routes:
+```sh
+$ rake routes
+Prefix Verb URI Pattern Controller#Action
+  root GET  /           products#index
+```
+
+* productsコントローラーのindexアクションを設定します
+
+*products_controller.rb*
+```ruby
+class ProductsController < RankingController
+    def index
+    end
+end
+```
+
+
+
+<a name="basic_function_top_page_newest"></a>
+### トップページに最新順で映画作品の一覧を表示しよう
+
+* productsコントローラーのindexアクションでインスタンス変数に作品情報を２０件分取得して代入しましょう
+
+*products_controller.rb*
+```ruby
+    # 省略
+
+    def index
+        @products = Product.order('id asc').limit(20)
+    end
+
+    # 省略
+```
+
+* ビューでアクションで取得したインスタンス変数にeachメソッドを使用して全ての作品を表示しましょう
+
+*views/products/index.html.erb*
+```html
+
+    <!-- # 省略 -->
+
+                <% @products.each do |product| %>
+                  <li class="col">
+                    <a href="#"><div class="thumbnail__figure" style="background-image:url(<%= product.image_url %>)"></div></a>
+                    <div class="thumbnail__caption">
+                      <h3 class="text-xsmall text-overflow" title="<%= product.title %>">
+                        <span><i class="icon-rate-60 text-xxsmall opacity-60" title=""></i></span><%= product.title %></h3>
+                      <p class="text-small">
+                        <span class="rating-star">
+                          <i class="star-actived rate-[ここに評価を表示]0"></i>
+                        </span>
+                      </p>
+                    </div>
+                  </li>
+                <% end %>
+
+    <!-- # 省略 -->
+```
+
+
+<a name="basic_function_product"></a>
+### 作品ページを表示しよう
+
+次に作品ページに移動できるようにします。
+
+* productsコントローラーのshowアクションにアクセスするためのルーティングを設定しましょう
+*routes.rb*
+```ruby
+    # 省略
+
+    get 'products/:id' => 'products#show' # 作品ページ
+
+    # 省略
+```
+
+* クリックしたときのリンク先を修正するにはaタグのhref属性の値を変更します
+
+*views/products/index.html.erb*
+```html
+
+    <!-- # 省略 -->
+            <a href="/products/<%= product.id %>">
+    <!-- # 省略 -->
+```
+
+
+
+* productsテーブルからidカラムがリンクに含まれる作品のidである作品をfindメソッドとparams[:id]を使って取得しインスタンス変数に代入しましょう
+
+*products_controller.rb*
+```ruby
+    # 省略
+
+    def show
+        @product = Product.find(params[:id])
+    end
+
+    # 省略
+```
+
+* ビューファイルを編集する
+
+*views/products/show.html.erb*
+```html
+    <!-- # 省略 -->
+
+<header class="header header--section">
+    <%= @product.title %>
+</header>
+<p style="text-align: center">
+    <img src="<%= @product.image_url %>" alt="<%= @product.title %>">
+</p>
+
+    <!-- # 省略 -->
+```
+
+
+<a name="basic_function_search_page"></a>
+### 検索画面を表示しよう
+
+「投稿するボタン」をクリックしたら検索画面に遷移するようにする
+
+*routes.rb*
+```ruby
+    root 'products#index'
+    get 'products/search' => 'products#search' # 検索
+    get 'products/:id' => 'products#show' # 作品ページ
+```
+
+
+*products_controller.rb*
+```ruby
+    # 省略
+
+    def search
+
+    end
+
+    # 省略
+```
+
+
+<a name="basic_function_search_function"></a>
+### 検索機能を実装しよう
+
+#### LIKE句
+LIKE句は、あいまいな文字列の検索をすることができるもので、whereメソッドと一緒に使います。
+
+あいまいな文字列の検索とはどういうことか。
+例えば、1文字目に'a'という文字列が入ったデータや最後の文字に'b'が入っているデータ、文字列の途中に'c'が入ったデータなどを検索したい時に、あいまい文字列というものを使って検索することです。
+
+* **あいまい文字列について**
+
+文字列 |意味
+- | -
+%  | 任意の文字列(空白文字列含む)
+_  | 任意の1文字
+
+
+* **実行サンプル**
+
+実行例 | 詳細
+- | |
+where('title LIKE(?)', "a%")  |  aから始まるタイトル
+where('title LIKE(?)', "%b")  |  bで終わるタイトル
+where('title LIKE(?)', "%c%") |  cが含まれるタイトル
+where('title LIKE(?)', "d_")  |  dで始まる2文字のタイトル
+where('title LIKE(?)', "_e")  |  eで終わる2文字のタイトル
+
+
+* **keywordというキーで、バックエンドに検索キーワードが送られています
+あいまい検索はLike句を使います**
+
+*products_controller.rb*
+```ruby
+    # 省略
+
+    def search
+        @products = Product.where('title LIKE(?)', "%#{params[:keyword]}%").limit(20)
+    end
+
+    # 省略
+```
+
+
+* **検索結果を表示するためにビューを編集しましょう**
+
+*views/products/search.html.erb*
+```html
+    <!-- # 省略 -->
+                <% @products.each do |product| %>
+                  <li>
+                    <a class="listview__element--right-icon" href="/products/0/reviews/new" title="<%= product.title %>">
+                      <div class="position-right p1em">
+                        <i class="icon-chevron-right color-sub"></i>
+                      </div>
+                      <div class="row no-space-bottom">
+                        <div class="col2">
+                          <div class="thumbnail thumbnail--movies">
+                            <div class="thumbnail__figure" style="background-image: url(<%= product.image_url %>);" title="<%= product.title %>"></div>
+                          </div>
+                        </div>
+                        <div class="col6 push6">
+                          <h3 class="text-middle text-break">
+                            <span class="color-sub"><%= product.title %></span>
+                          </h3>
+                          <p class="text-xsmall text-overflow">
+                          </p>
+                        </div>
+                      </div>
+                    </a>
+                  </li>
+                <% end %>
+    <!-- # 省略 -->
+```
+
+<a name="basic_function_review_model"></a>
+### レビューのモデルを作成しよう
+レビューを投稿画面を作る前に、レビューをデータベースに保存するためにレビュー用のテーブルReviewsテーブルを作成しましょう。
+以下のカラムの構成でReviewsテーブルを作成してください。
+
+
+カラム名  |  型  | 情報
+- | - | -
+nickname |   String | ニックネーム
+rate   | Integer| 評価
+review  |Text  |  レビュー
+product_id | Integer |作品id
+
+* `rails g モデル名(小文字)`でマイグレーションファイルを作成します
+
+```sh
+$ bundle exec rails g model review
+```
+
+* マイグレーションファイルにカラムの情報を記述します
+
+*db/migrate/20151117081150_create_reviews.rb*
+```ruby
+class CreateReviews < ActiveRecord::Migration
+  def change
+    create_table :reviews do |t|
+      t.string :nickname
+      t.integer :rate
+      t.text :review
+      t.integer :product_id
+      t.timestamps
+    end
+  end
+end
+
+```
+
+* `bundle exec rake db:migrate`コマンドでマイグレーションを実行します
+
+```sh
+$ bundle exec rake db:migrate
+== 20151117081150 CreateReviews: migrating ====================================
+-- create_table(:reviews)
+   -> 0.0634s
+== 20151117081150 CreateReviews: migrated (0.0637s) ===========================
+```
+
+
+<a name="basic_function_review_page"></a>
+### 投稿画面を表示させよう
+
+#### resourcesメソッド
+resourcesメソッドに対象となるリソース名(コントローラー名)を指定するだけで、Railsのリソースの7つのアクションで記載した7つのアクション名に対してのルーティングが自動的に設定されます。
+
+Railsのリソースの7つのアクション | 役割
+- | -
+index |  リソースの一覧を表示する。
+show   | リソースの内容を表示する。
+new |リソースを追加する。
+create | リソースを追加し、作成する。
+edit   | リソースを更新するためのフォームを表示する。
+update | リソースを更新する。
+destroy |リソースを削除する。
+
+* **resourcesメソッドのネスト**
+
+resourcesメソッドのネストは以下のように書きます。
+
+【例】config/routes.rb
+```ruby
+resources :books do
+  resources :reviews
+end
+```
+
+`collection` というのは、Rails7つのアクション以外のアクション名を定義する時に使います。
+
+*routes.rb*
+```ruby
+TechReviewSite::Application.routes.draw do
+
+    resources :products, only: :show do
+        resources :reviews, only: [:new, :create]
+        collection do
+            get 'search'
+        end
+    end
+    root 'products#index'
+end
+```
+
+```sh
+$ rake routes
+            Prefix Verb URI Pattern                                 Controller#Action
+   product_reviews POST /products/:product_id/reviews(.:format)     reviews#create
+new_product_review GET  /products/:product_id/reviews/new(.:format) reviews#new
+   search_products GET  /products/search(.:format)                  products#search
+           product GET  /products/:id(.:format)                     products#show
+              root GET  /                                           products#index
+```
+
+これでどのproductに対するreviewなのかということがパスから判断できるようになりました
+
+#### form_for
+
+* form_forは、特定のモデルを編集・追加するためのフォームを生成するヘルパーメソッドです。
+
+特定のテーブルにレコードだけを新規作成、更新するときに利用します。
+
+```html
+<%= form_for(モデルクラスのインスタンス) do |f| %>
+…
+<% end %>
+```
+
+このようにあるモデルのインスタンスをform_forの引数にします。
+form_forは引数のインスタンスが何も情報を持っていなければ自動的にcreateアクションへ、すでに情報を持っている場合はupdateアクションへ自動的に振り分けてくれます。
+
+form_tagでは送信先のurlを直接引数に定義していました。
+
+*search.html.erb*
+```html
+<%= form_tag('/products/search', method: :get) do %>
+```
+
+* form_for内で使うメソッドは、`f.htmlタグ名 :カラム名`の形で指定します。
+
+例えば、以下のヘルパーメソッドを見てください。
+```html
+<%= f.text_field :name %>
+```
+こちらは、次のようなhtmlに変換されます。
+```html
+<input id="モデル名_name" name="モデル名[name]" type="text" size="モデルで設定したsize">
+```
+
+form_for内におけるメソッドはformに使用するhtmlタグの数だけあります。
+
+メソッド  |  用途
+- | -
+f.label |labelのlabelタグを表示
+f.text_field  |  textのinputタグを表示
+f.date_select  | モデルで設定したフィールドをselectタグで選べるようにして表示
+f.check_box |checkboxのinputタグを表示
+f.number_field | numberのinputタグを表示
+f.submit  |  submitのinputタグを表示
+
+基本的にhtmlのformを知っていたら推測できるようなメソッドが用意されています。ここで全てのメソッドを覚えるのは大変なので、必要なときに[railsの公式ドキュメント](http://railsdoc.com/form)を確認してください。
+
+#### form_forとform_tag
+`form_for` と `form_tag` どちらを使うべきかは、基本的にモデルの有無で判断します。入力フォームで入力するデータのモデルがあれば `form_for` を使い、入力するデータが特にモデルを持っていなければ `form_tag` を使います。
+
+* `form_for`: モデルがあるデータを扱うときに使う。(投稿フォームなど)
+* `form_tag`: 単にデータを特定のアクションに送りたい時に使う。（検索フォームなど）
+
+#### コントローラ
+
+*reviews_controller.rb*
+```ruby
+class ReviewsController < RankingController
+    def new
+        @product = Product.find(params[:product_id])
+        @review = Review.new
+    end
+
+  def create
+    Review.create(create_params)
+    redirect_to controller: :products, action: :index
+  end
+
+  private
+  def create_params
+    params.require(:review).permit(:nickname, :rate, :review).merge(product_id: params[:product_id])
+  end
+end
+
+```
+
+
+<a name="basic_function_review_page_shows"></a>
+### 映画作品へのレビューの一覧を作品ページで見れるようにしよう
+
+* ProductモデルとReviewモデルとの間にアソシエーションを設定する
+
+*model/review.rb*
+```ruby
+class Review < ActiveRecord::Base
+    belongs_to :product
+end
+```
+
+*model/product.rb*
+```ruby
+class Product < ActiveRecord::Base
+    has_many :reviews
+end
+```
+
+
+
+<a name="application"></a>
+# 応用機能
+
+## レビューの評価を星で表示する
+
+* **個別の作品ページでレビューの星を表示する**
+
+*show.html.erb*
+```html
+<!-- 省略 -->
+
+  <p class="text-small">
+    <span class="rating-star">
+      <i class="star-actived rate-90"></i>
+    </span>
+  </p>
+
+<!-- 省略 -->
+```
+
+* ** 映画一覧ページでそれぞれの映画の平均評価を取得する **
+
+*index.html.erb*
+```html
+    <p class="text-small">
+      <% if product.reviews.present? %>
+      <span class="rating-star">
+        <i class="star-actived rate-<%= product.reviews.average(:rate).round %>0"></i>
+      </span>
+      <% else %>
+      <span class="rating-star">
+        <i class="star-actived rate-0"></i>
+      </span>
+      <% end %>
+    </p>
+```
+
+## 投稿数ランキングの表示
+
+ランキングの条件は「投稿数の多いものから順番に」と「上から5件取得」の2つです。ランキングが表示されるのはすべての画面です。つまり、すべてのコントローラーのアクションでランキングの情報を取得しなければなりません。
+こういった場合、ランキングを取得する処理をbefore_actionで記述しましょう。
+####1.before_actionを設定する
+あるコントローラのすべてのアクションで実行の前に共通の処理を行いたいときがあります。before_actionを使用すると全てのアクションが実行される前に指定したメソッドを呼び出すことができるようになります。
+
+```ruby
+  class コントローラ名 < ApplicationController
+    before_action :処理させたいメソッドの名前
+```
+
+① before_actionを書いたコントローラのすべてのアクションの前に処理を行える
+② before_actionを書いたコントローラで共通の処理を行える
+
+すべてのコントローラで共通のbefore_actionを定義したい場合は**ApplicationController**に記述します。
+
+*controller/ranking_controller.rb*
+```ruby
+class RankingController < ApplicationController
+  layout 'review_site'
+  before_action :ranking
+  def ranking
+    @ranking = Product.limit(5)
+  end
+end
+
+```
+
+####2.ランキングを表示させる
+
+上記の`layout 'review_site'`という記述がありますね。これはビューのレイアウトファイルを指定するものです。なにも指定しないとレイアウトファイルはapplication.html.erbとなります。
+
+* **レイアウトファイル**
+
+レイアウトファイルとは**app/views/layouts/**の下に入っているHTMLファイルです。レイアウトファイルはURLにアクセスして対応するコントローラが呼ばれたあと、最初に表示されるHTMLのことです。実は今まで修正していた**show.html.erb**などのファイルはレイアウトファイルの中に呼び出されています。
+
+*/layouts/review_site.html.erb*
+```html
+
+<!-- 省略 -->
+
+    <% @ranking.each.with_index(1) do |product, i| %>
+
+    <!-- 省略 -->
+
+    <% end %>
+
+<!-- 省略 -->
+
+
+```
+
+
+##### 要点チェック
+
+* レイアウトファイルはURLにアクセスしたときに最初に呼ばれるHTMLファイル
+* コントローラ内でlayout レイアウトファイル名と指定すると、コントローラごとに使うレイアウトファイルを指定できる
+* コントローラで指定しないときに呼ばれるデフォルトのレイアウトファイルはapplication.html.erb
+
+
+
+####3.productsテーブルから、レビュー数が多い順に5件レコードを取得する
+
+* **groupメソッド**
+
+groupメソッドはテーブルのレコードを**指定したカラム**でまとめることができます。以下のように使います。
+```ruby
+モデル.group(:カラム名)
+```
+
+groupメソッドを使うと、指定したカラムでレコードがまとめられます。まとめられたレコードの内、idが一番小さいレコードの１件だけが表示されていますが、プログラムが実行されている裏側ではすべてのレコードが指定したカラムでまとめられています。現在は、それぞれのまとまりが具体的に何個あるのかはわかりません。
+
+* **countメソッド**
+
+countメソッドは配列などの要素数を返すメソッドです。groupメソッドに続けて使うとまとめられたそれぞれのレコードの数が取得できます。
+
+```ruby
+モデル.group(:カラム名).count
+```
+
+例：
+```ruby
+pry(main)> Review.group(:product_id).count
+   (0.4ms)  SELECT COUNT(*) AS count_all, product_id AS product_id FROM `reviews` GROUP BY product_id
+=> {1=>3, 2=>1, 3=>1, 229=>1}
+```
+
+* **order('count_カラム名').count(カラム名)**
+
+countメソッドの引数にカラム名を指定することができます。するとorderメソッドでcount_カラム名でのソートが可能となります。これはそのカラムを持つレコードの数でソートするという意味です。
+
+つまり上の例では、product_idでまとめたレコードをレコード数でソートして、カラム名とレコード数のハッシュで返す、という処理になっています。
+ソートする
+```ruby
+pry(main)> Review.group(:product_id).order('count_product_id DESC').count(:product_id)
+   (0.4ms)  SELECT COUNT(`reviews`.`product_id`) AS count_product_id, product_id AS product_id FROM `reviews` GROUP BY product_id ORDER BY count_product_id DESC
+=> {1=>3, 229=>1, 2=>1, 3=>1}
+```
+
+取得したいのは5件なので、limit(5)を付け加えます。limitメソッドは複数のレコードの配列のような形であるActiveRecord::Relationに対するメソッドです。count(:product_id)の時点ではハッシュになっているため、その後に付け加えるとハッシュに対してlimitメソッドを実行することになりエラーが起こります。そのため、その直前に付け加え、以下のようにします。
+
+```ruby
+Review.group(:product_id).order('count_product_id DESC').limit(5).count(:product_id)
+```
+
+
+* **keysメソッド**
+
+ハッシュはkeysというメソッドを持っています。これはハッシュのキーだけを取り出して配列として返すメソッドです。
+
+```ruby
+Review.group(:product_id).order('count_product_id DESC').limit(5).count(:product_id).keys
+   (0.5ms)  SELECT COUNT(`reviews`.`product_id`) AS count_product_id, product_id AS product_id FROM `reviews` GROUP BY product_id ORDER BY count_product_id DESC LIMIT 5
+=> [1, 229, 2, 3]
+```
+
+
+* **mapメソッド**
+
+mapメソッドは配列オブジェクトのインスタンスメソッドです。mapオブジェクトは配列の中身を１つずつ取り出してブロックという構文を繰り返し実行します。そして、ブロックの返り値を集めた新しい配列を作成します。
+
+```ruby
+配列オブジェクト.map {|ele| ブロックの処理}
+# eleには配列の要素が１つずつ代入される
+# ブロックの処理は配列の要素の数だけ繰り返し実行される
+```
+
+具体的な例を見ていきましょう。
+配列に入っている全ての数値を2乗した新しい配列を取得したい場合、mapを使うと以下のように書けます。
+
+【例】
+
+```ruby
+numbers = [2, 5, 9]
+squares = numbers.map {|number| number * number}
+p squares
+=> [4, 25, 81]
+```
+
+mapメソッドを使うと配列オブジェクトの各要素を使って新しい配列を生成することができます。product_idの配列に対してmapメソッドを使い、Productsテーブルからレコードを取得するのは以下のような方法になります。
+
+*ranking_controller.rb*
+```ruby
+class RankingController < ApplicationController
+  layout 'review_site'
+  before_action :ranking
+  def ranking
+    product_ids = Review.group(:product_id).order('count_product_id DESC').limit(5).count(:product_id).keys
+    @ranking = product_ids.map { |id| Product.find(id) }
+  end
+end
+
+```
+
+
+##### 要点チェック
+
+* groupメソッドを使うと指定したカラムでレコードをまとめることができる
+* groupメソッドに続けてcountメソッドを使うとまとめた各グループのレコード数が取得できる
+* order('count_カラム名').count(カラム名)を使うと指定したカラムでグルーピングし、それぞれのレコード数でソートができる
+* ハッシュのkeysメソッドを使うとハッシュのキーの配列が取得できる
+
+## ユーザー登録機能
+
+自分で書いたレビューをあとで見れるように、サインアップ画面をつくってユーザーを生成するようにしましょう。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## ログイン機能
+## ログアウト機能
+## アイコン画像のアップロード機能
+## マイページ
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
