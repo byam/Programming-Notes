@@ -19,13 +19,13 @@
     * [投稿画面を表示させよう](#basic_function_review_page)
     * [映画作品へのレビューの一覧を作品ページで見れるようにしよう](#basic_function_review_page_shows)
 * [応用機能](#application)
-    * [レビューの評価を星で表示する](#application_)
-    * [投稿数ランキングの表示](#application_)
-    * [ユーザー登録機能](#application_)
-    * [ログイン機能](#application_)
-    * [ログアウト機能](#application_)
-    * [アイコン画像のアップロード機能](#application_)
-    * [マイページ](#application_)
+    * [レビューの評価を星で表示する](#application_review_star)
+    * [投稿数ランキングの表示](#application_ranking)
+    * [ユーザー登録機能](#application_user_register)
+    * [サインアウト、ログイン機能](#application_user_signin_out)
+    * [アイコン画像のアップロード機能](#application_avatar)
+    * [サインアップ画面でニックネームと画像を設定](#application_nickname_avatar_view)
+    * [マイページ](#application_mypage)
 
 <a name="preparation"></a>
 ## 準備
@@ -712,6 +712,7 @@ end
 <a name="application"></a>
 # 応用機能
 
+<a name="application_review_star"></a>
 ## レビューの評価を星で表示する
 
 * **個別の作品ページでレビューの星を表示する**
@@ -746,6 +747,8 @@ end
     </p>
 ```
 
+
+<a name="application_ranking"></a>
 ## 投稿数ランキングの表示
 
 ランキングの条件は「投稿数の多いものから順番に」と「上から5件取得」の2つです。ランキングが表示されるのはすべての画面です。つまり、すべてのコントローラーのアクションでランキングの情報を取得しなければなりません。
@@ -909,28 +912,597 @@ end
 * order('count_カラム名').count(カラム名)を使うと指定したカラムでグルーピングし、それぞれのレコード数でソートができる
 * ハッシュのkeysメソッドを使うとハッシュのキーの配列が取得できる
 
+
+
+<a name="application_user_register"></a>
 ## ユーザー登録機能
 
 自分で書いたレビューをあとで見れるように、サインアップ画面をつくってユーザーを生成するようにしましょう。
 
+### 1.deviseのファイルをインストールする
+
+> Gemfileの末尾に以下の記述を追加
+
+*Gemfile*:
+```ruby
+gem 'devise'
+```
+
+> bundle installコマンドを実行
+
+*terminal*:
+```sh
+$ bundle install
+```
+
+> deviseを使うのに必要なファイルを生成
+
+*terminal:*
+```sh
+$ rails g devise:install
+```
+
+> deviseのサインアップやログインのviewファイルを生成
+
+*terminal:*
+```sh
+$ rails g devise:views
+```
+
+### 2.必要なファイルを入れ替える
+
+置き換えるファイルは以下の2つのファイルです。
+
+* app/views/devise/registrations/new.html.erb
+* app/views/devise/sessions/new.html.erb
+
+### 3.ユーザーのモデルを作成する
+
+> ユーザーモデル作成のためのマイグレーションファイルが生成
+```sh
+$ rails g devise user
+```
+
+> usersテーブルを作成
+```sh
+$ bundle exec rake db:migrate
+```
+
+> 確認
+```sh
+$ rails s
+```
+
+http://localhost:3000/users/sign_up
+
+
+<a name="application_user_signin_out"></a>
+## サインアウト、ログイン機能
+
+### 1.サインアウトボタンを設置する
+サインアウトのボタンを投稿するボタンの横に設置しましょう。
+
+deviseで実装されるサインアウトのリクエストは初期の状態ではDELETEメソッドです。
+
+```sh
+$ bundle exec rake routes
+ Prefix Verb   URI Pattern                       Controller#Action
+        new_user_session GET    /users/sign_in(.:format)          devise/sessions#new
+            user_session POST   /users/sign_in(.:format)          devise/sessions#create
+    destroy_user_session DELETE /users/sign_out(.:format)         devise/sessions#destroy
+
+```
+
+*app/views/layouts/review_site.html.erb:*
+```html
+<li class="entry_button" style="float: right">
+  <%= link_to 'サインアウト', "/users/sign_out", method: :delete %>
+</li>
+```
+
+### 2.サインアウト後のリダイレクトを設定する
+サインアウト後にはログイン画面に遷移させるのが自然ですね。
+
+サインアウト後のリダイレクト先のURLを設定するにはdeviseのメソッド`after_sign_out_path_for`を使いましょう。
+
+> after_sign_out_path_forメソッド
+
+deviseでサインアウトしたあとのリダイレクト先を指定するメソッドとしてafter_sign_out_path_forがあります。このメソッドでは返り値にサインアウト後のリダイレクト先URLを指定します。
+
+*app/controllers/application_controller.rb:*
+```ruby
+def after_sign_out_path_for(resource)
+  '/users/sign_in' # サインアウト後のリダイレクト先URL
+end
+```
+
+### 3.サインインしていない場合はログイン画面にリダイレクトさせる
+レビューの投稿はログインしている状態でないとできないようにしましょう。
+
+トップページや作品ページはログインしていなくてもアクセスできます。
+
+> authenticate_user!
+
+deviseをインストールすると、ログイン画面とサインアップ画面を自動で用意してくれます。authenticate_user!はdeviseをインストールすることで使えるメソッドです。ユーザーがログインしているかどうかを確認し、ログインしていない場合はログインページにリダイレクトします。通常、before_actionを合わせて使用します。before_actionのexceptやonlyオプションを組み合わせると特定のアクションを指定することもできます。
+
+*app/controllers/products_controller.rb:*
+```ruby
+  before_action :authenticate_user!, only: :search
+```
+
+*app/controllers/reviews_controller.rb:*
+```ruby
+  before_action :authenticate_user!, only: :new
+```
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-## ログイン機能
-## ログアウト機能
+<a name="application_avatar"></a>
 ## アイコン画像のアップロード機能
+
+`paperclip`を使って画像のアップロード機能をつけよう
+
+画像アップロード用のgemであるpaperclipを使って、画像のアップロード機能を実装しましょう。paperclipを使うと非常に簡単に画像のアップロード機能を実装することができます。
+
+### 1.paperclipをインストールする
+paperclipを使うにはImageMagickという画像変換ツールをパソコン内にインストールする必要があります(これはgemとは別のツールです)。
+
+> Image Magick
+
+ImageMagickは、コマンドラインから簡単に画像の保存形式の変更などが行えるツールです。
+
+すでにImageMagickがインストール済みかどうかはターミナルでwhich convertコマンドを使ってパスが表示されるかで判断できます。コマンドを使うディレクトリはどこでも良いです。
+
+*terminal:*
+```sh
+$ which convert
+/usr/local/bin/convert  # このようにパスが表示されていればImageMagickのインストールは完了しています
+```
+
+もし、エラーが出た人はまだImageMagickをインストールしていないので、以下のコマンドでインストールしましょう。
+
+```sh
+$ brew install imagemagick
+```
+
+> paperclipをインストール
+
+*Gemfile:*
+```ruby
+gem 'paperclip'
+```
+
+*terminal:*
+```sh
+$ bundle install
+```
+
+gemを新しくインストールしたのでサーバーを再起動しましょう。
+
+*terminal:*
+```sh
+$ rails s
+```
+
+gemが導入できたかどうかはmooovi/Gemfile.lockというファイルの中を見て確認します。以下のようにpaperclipがあれば正常にインストールされています。
+
+
+### 2.usersテーブルにpaperclip用のカラムを追加する
+ユーザーのアイコン画像をアップロードして設定できるようにします。つまり、ユーザーモデルにアイコン画像用のカラムを追加する必要があるということです。これもpaperclipを使うとほとんど自動で設定してくれます。
+
+ユーザーモデルに追加するアイコン画像のカラム名は`avatar`にしましょう。カラム追加用のマイグレーションファイルはpaperclipのコマンド`rails g paperclip`で生成できます。
+
+*terminal:*
+```sh
+#usersテーブルにavatarカラムを追加するためのマイグレーションファイルを作成
+$ rails g paperclip user avatar
+
+#マイグレーションファイルの実行
+$ bundle exec rake db:migrate```
+
+
+### 3.userモデルにpaperclipの設定を追記する
+Userモデルにアイコン画像の設定を記述しなくてはいけません。記述しなくてはいけない設定は`has_attached_file`と`validates_attachment_content_type`の2つです。
+
+> has_attached_file
+
+`has_attached_file`では画像用のカラムのサイズやデフォルト画像、画像ファイルの保存先を設定できます。
+
+```ruby
+class モデル名 < ActiveRecord::Base
+
+  has_attached_file :カラム名,
+                    styles:  { medium: "画像サイズ", thumb: "画像サイズ" }
+```
+
+サイズを指定するための属性はstylesです。stylesではどのような種類の画像をどの大きさで保存するか指定します。「medium」や「thumb」はImageMagickで保存できる画像の種類です。
+
+画像サイズの指定はImageMagickでの指定方法に準じます。以下のような指定方法があります。
+
+画像サイズの指定方法
+
+指定方法 | 備考
+- | -
+100×100| 横100px、縦100pxの画像(アスペクト比を保つ)
+100×100!|  アスペクト比を無視
+100×100> | 一番長い辺を100pxにするようにリサイズ(アスペクト比を保つ)
+100×100^  |一番短い辺を100pxにするようにリサイズ(アスペクト比を保つ)
+100×100# | アスペクト比を保ち一番短い辺を100pxにするようにリサイズし、画像を中央によせ、はみ出た部分は切り取る
+
+> validates_attachment_content_type
+
+`validates_attachment_content_type`は画像のバリデーションを設定します。サイズや画像の種類でバリデーションが可能です。
+
+```ruby
+class モデル < ActiveRecord::Base
+
+  validates_attachment_content_type :カラム名,
+                                    content_type: ["画像の種類"]
+```
+
+アップロードを許可する画像の種類の指定をします。
+画像の種類を指定するための属性はcontent_typeです。content_typeでは許可する画像の種類の配列を指定します。
+
+画像の種類の指定方法
+
+指定方法 | 備考
+- | -
+image/jpg |jpgファイル
+image/jpeg | jpegファイル
+image/png |pngファイル
+image/gif| gifファイル
+```ruby
+class モデル < ActiveRecord::Base
+
+  validates_attachment_content_type :カラム名,
+                                    content_type: ["image/jpeg", "image/png"]
+```
+
+
+> 今回のUserモデルのカラムavatarでは以下の指定をしましょう。
+
+* has_attached_file
+
+属性：styles
+
+種類：medium: "300x300#", thumb: "100x100#"
+
+* validates_attachment_content_type
+
+属性：content_type
+
+種類：["image/jpg","image/jpeg","image/png"]
+
+> 画像データを生成する
+
+`File.new("app/assets/images/画像ファイル名", "r")`
+
+
+
+
+
+<a name="application_nickname_avatar_view"></a>
+## サインアップ画面でニックネームと画像を設定
+
+paperclipによってユーザーのアイコン画像のアップロードが可能となったのでサインアップ画面でアイコン画像の設定をするビューをつくりましょう。さらにユーザーのニックネームもサインアップ画面で設定できるようにしましょう。
+
+
+### １.usersテーブルにニックネームカラムを追加する
+
+*terminal:*
+```sh
+#nicknameカラムを追加するマイグレーションファイルを作成
+$ rails g migration AddNicknameToUsers nickname:string
+
+#マイグレーションファイルの実行
+$ bundle exec rake db:migrate
+```
+
+### 2.ビューを追加する
+
+カラムが追加できたので、続いてサインアップ画面にニックネームを入力するフォームとアイコン画像をアップロードできるフォームを作りましょう。
+
+サインアップ画面はRailsのform_forメソッドを使って記述されています。
+ニックネームはテキストフィールド、アイコン画像にはファイルフィールドと呼ばれるファイルのアップロード用のフィールドを生成します。
+テキストフィールドは`text_field`、ファイルフィールドは`file_field`のフォームタグを利用することで生成できます。また、カラム名の指定も忘れずにしましょう。
+
+*app/views/devise/registrations/new.html.erb:*
+```html
+  <div class="label"><%= f.label :nickname %><br />
+  <%= f.text_field :nickname %></div>
+  <div class="field">
+  <%= f.file_field :avatar %></div>
+```
+
+
+### 3.ストロングパラメーターを追加する
+しかし、今のままニックネームを入力とアイコン画像をアップロードしてユーザーの作成ボタンを押すと、nicknameとavatarが設定されません。これはdeviseで設定されているstrong_parametersによってnicknameとavatarのパラメータがはじかれているからです。
+
+そこで、deviseのstrong_parametersに新しく許可するパラメータを追加する必要があります。deviseではそのためのメソッド`devise_parameter_sanitizer`が用意されています。
+
+> devise_parameter_sanitizer
+
+devise_parameter_sanitizerメソッドを使うとdeviseで設定されているstrong_parametersに対してパラメータを追加することができます。具体的な使い方は以下です。
+
+```ruby
+devise_parameter_sanitizer.for(追加したいメソッドの種類).push(追加したいパラメータ名)
+
+```
+
+devise_parameter_sanitizerメソッドで指定する引数は2種類あります。1つ目が「StrongParametersを追加したい処理の種類」です。
+
+引数の値 | 処理
+- | -
+:sign_up | 新規登録時
+:sign_in | ログイン時
+:account_update | モデルの更新時
+
+
+2つ目の引数には追加したいパラメータ名を渡します。複数のパラメータを送る場合は,(カンマ)区切りで渡します。
+
+```ruby
+  devise_parameter_sanitizer.for(追加したいメソッドの種類).push(:パラメータ1, :パラメータ2,..)
+
+```
+
+また、devise_parameter_sanitizerメソッドはbefore_actionに設定します。これはdeviseの処理であるので、記述するのはDeviseのコントローラを継承したコントローラかもしくはApplicationControllerです。
+
+しかし今回Deviseのコントローラを継承したコントローラは作成していないのでApplicationControllerに記述しましょう。
+
+devise_parameter_sanitizerメソッドを直接before_actionに記述してはいけません。devise_parameter_sanitizerを呼び出すためのメソッドを作成してそのメソッドを呼び出すようにしましょう。
+
+*application_controller.rb:*
+```ruby
+  before_action :configure_permitted_parameters
+
+  def configure_permitted_parameters
+    # devise_parameter_sanitizerメソッドを呼び出す
+  end
+```
+
+
+実は、devise_parameter_sanitizerメソッドはdeviseで追加されたメソッドなので、Deviseのコントローラ以外で呼び出すことができません。よって、before_actionを適応するコントローラを指定します
+```ruby
+  before_action :メソッド名, if: :コントローラ名?
+```
+
+
+
+
+
+### 4.バリデーションを設定する
+
+現在の状態ではパスワードとIDさえ入力していればサインアップできます。しかしニックネームも必須の入力項目にしたいです。そこでニックネームが入力されていなければエラーを返すようにバリデーションを設定しましょう。
+
+さらにニックネームが必須項目であることを知らせるために以下のようにテキストフィールドにプレイスホルダーを設定しましょう。
+
+>validation(検証)
+
+validationとは、入力フォームを通じてビューからサーバー側へパラメーターが送られてきた際、正常な値か検証することができる機能です。
+
+>validates :カラム名, presence: true
+
+フォームの中身があるかないかを検出し、無い場合は保存を実行せず元のビューにリダイレクトします。
+
+例えば、userのemailを入力必須にしたい場合、以下のように書くことができます。
+
+*user.rb:*
+```ruby
+class User < ActiveRecord::Base
+    validates :email, presence: true
+```
+
+> placeholder: ''
+
+フォームの中に、''で囲んだ文字をフォームの値が空の時に薄く表示しておくことができます。userが何を入力すれば良いかわかりやすくするためです。text_fieldメソッドのオプションとして、以下のように利用します。
+
+```html
+<%= f.text_field :nickname, placeholder: 'ニックネームを入力（必須）' %>
+```
+
+
+*app/models/user.rb:*
+```ruby
+  validates :nickname, presence: true
+```
+
+*app/views/devise/registrations/new.html.erb:*
+```html
+  <%= f.text_field :nickname, placeholder: 'ニックネームを入力(必須)' %></div>
+
+```
+
+
+### 5.アソシエーションを利用しよう
+
+せっかくニックネームを入力できるようにしたので、レビューの投稿画面にあるニックネームの入力欄は消してしまいましょう。また、レビューの保存時に「誰が書いたレビューなのか」という情報も保存し、レビューの表示時にレビューを書いた人のnicknameを表示できるよう実装しましょう。
+
+#### 1.ニックネームの入力欄を消す
+
+*app/views/reviews/new.html.erb:* を編集し、不要なフォームを削除しましょう
+```html
+  <div style="margin: 8px 0">
+    <%= f.label :ニックネーム, style: { 'margin-right' => 8 } %>
+    <%= f.text_field :nickname, placeholder: 'ニックネーム' %>
+  </div>
+```
+
+> reviewを新規投稿する際、投稿者のnicknameをreviewsテーブルに保存
+
+*app/controllers/reviews_controller.rb:*
+```ruby
+    private
+    def create_params
+      params.require(:review).permit(:rate, :review).merge(product_id: params[:product_id], nickname: current_user.nickname)
+    end
+```
+
+
+
+
+#### 2.userモデルとreviewモデルの間にアソシエーションを設定する
+
+> reviewsテーブルのnicknameカラムを削除
+
+```sh
+#reviewsテーブルからnicknameカラムを削除するためのマイグレーションファイルを作成
+$ rails g migration RemoveNickNameFromReviews nickname:string
+
+#マイグレーションファイルの実行
+$ bundle exec rake db:migrate
+```
+
+> reviewsテーブルにuser_idカラムを追加
+
+```sh
+#reviewsテーブルにuser_idカラムを追加するためのマイグレーションファイルを作成
+$ rails g migration AddUserIdToReviews user_id:integer
+
+#マイグレーションファイルの実行
+$ bundle exec rake db:migrate
+```
+
+
+> reviewとuserの間にアソシエーションを設定
+
+*app/models/user.rb:*
+```ruby
+  has_many :reviews
+```
+
+*app/models/user.rb:*
+```ruby
+  belongs_to :user
+```
+
+*app/controllers/reviews_controller.rb:*
+```ruby
+  params.require(:review).permit(:rate, :review).merge(product_id: params[:product_id], user_id: current_user.id)
+
+```
+
+*app/views/products/show.html.erb:*
+```ruby
+<h3 class="text-xsmall text-overflow" title="<%= review.user.nickname %>">
+  <span><i class="icon-rate-60 text-xxsmall opacity-60" title=""></i></span><%= review.user.nickname %><small 2014=""></small>
+</h3>
+```
+
+<a name="application_mypage"></a>
 ## マイページ
+
+### 1.マイページに遷移できるようにする
+
+自分の書いたレビューの一覧が見られるマイページを実装しましょう。
+
+マイページは、userの詳細ページだということもできます。そこで、新たにusers_controllerを作成し、`show`アクションを定義しましょう。
+
+> users_controllerを作成
+```sh
+$ rails g controller users
+```
+
+> showアクションを定義
+*app/controllers/users_controller.rb*
+```ruby
+class UsersController < ApplicationController
+  def show
+  end
+end
+```
+
+> ルーティング設定
+*config/routes.rb*
+```ruby
+TechReviewSite::Application.routes.draw do
+
+  devise_for :users
+  resources :users, only: :show
+  resources :products, only: :show do
+    resources :reviews, only: [:new, :create]
+    collection do
+      get 'search'
+    end
+  end
+
+  root 'products#index'
+
+end
+```
+
+> マイページに遷移するボタンを作成
+
+*app/views/layouts/review_site.html.erb:*
+```html
+              <% if user_signed_in? %>
+                <li class="entry_button" style="float: right">
+                  <%= link_to "サインアウト", destroy_user_session_path, method: :delete %>
+                </li>
+                <li class="entry_button" style="float: right">
+                  <a href="/users/<%= current_user.id %>">マイページ</a>
+                </li>
+              <% end %>
+
+```
+
+
+### 2.マイページのビューを追加する
+
+ダウンロードしたrails2フォルダに入っているshow.html.erbファイルをviews/usersフォルダに移動しましょう
+
+### 3.ユーザーの情報を表示する
+
+マイページなので表示する情報は自分の情報にしましょう。マイページ画面で呼ばれるアクションはUsersControllerのshowアクションなので、対応するビューは`app/views/users/show.html.erb`となります。
+
+>  image_tag
+
+image_tagは、htmlの<img>タグを生成するヘルパーメソッドです。以下の例のように引数に文字列で画像ファイルのパスを取ります。
+
+```html
+  <%= image_tag "image/sample.jpg" %> #=> <img src="image/sample.jpg">
+
+```
+
+> マイページに、ログイン中のuserの情報を表示しましょう
+
+*app/views/users/show.html.erb:*
+```html
+          <div class="user_image"><%= image_tag  current_user.avatar %></div>
+          <h2><%=  current_user.nickname %> <span>さんのマイページ</span></h2>
+
+```
+
+
+### 4.自分のレビューの一覧を表示する
+
+自分のレビューの情報はアソシエーションを使えば取得できますね。
+今回も呼ばれるアクションはusers_controllerのshowアクションなので、対応するビューはapp/views/users/show.html.erbとなります。
+
+> マイページにおいて、自分が投稿したレビューの一覧を表示
+
+*app/views/users/show.html.erb:*
+```html
+    <%  current_user.reviews.each do |review| %>
+      <li style="background-image: url(<%= review.product.image_url %>)">
+        <div class="meta">
+          <header>
+            <div class="title"><%= review.product.title %></div>
+            <span class="star"><span class="rating-star"><i class="star-actived rate-<%= review.rate %>0"></i></span></span>
+          </header>
+          <div class="user_review"><%= review.review %></div>
+        </div>
+      </li>
+    <% end %>
+```
+
+
+
+
+
+
+
+
+
 
 
 
