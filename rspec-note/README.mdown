@@ -1,0 +1,370 @@
+# RSpec Basic
+
+Ruby on Railsにおけるテストは、「RSpec」というgemを利用して行います。
+
+テストには、単体テストと結合テストの2種類があります。
+単体テストとは、プログラムの最小単位であるメソッドが期待通りに動作するかを確認するテストのことです。
+結合テストとは、複数のプログラムが連動して起こる一連の動作が期待通りになるかを確認するテストのことです。
+
+* [1章「はじめに」](#start)
+
+* [2章「単体テスト・モデル編①」](#model1)
+
+    テストを作成するための言語であるRSpecの導入から、Pictweetのモデルクラスのテストコードの基礎的な書き方までを学びます。
+
+* [3章「単体テスト・モデル編②」](#model2)
+
+    引き続きモデルクラスのテストコードを作成します。テストを書く際に利用すると便利なfactory_girlというGemを紹介し、実際に利用してみます。
+
+* [4章「単体テスト・コントローラー編」](#controller)
+
+    もうひとつの単体テストであるコントローラークラスのテストコードを作成していきます。factory_girlの応用的な使い方や、ダミーのデータを作成するためのGemであるFakerの利用方法なども学んでいきます。
+
+
+<a name="start"></a>
+# 1章「はじめに
+
+#### Railsにおけるテストについて
+
+Ruby on Railsにおいては、基本的にはモデルとコントローラのファイルに対してテストコードを作成します。その際はRSpecという独自の言語を利用します。
+
+#### RSpec
+
+RSpecは、Rubyを元に作成されたテストに特化した言語です。「rspec-rails」というGemをインストールすると、RSpecを利用できます。
+
+基本的に、ひとつのプロダクションコードに対してはひとつのテストコードが必要です。
+例えばRuby on Railsにおいては、モデルクラスやコントローラークラスひとつにつきひとつのテストコードを書かなければいけません。これは面倒に感じるかもしれませんが、それを補いなお余るほどのメリットも存在します。それは、主に以下の3つです。
+
+* **仕様漏れを減らすことができる**
+
+    テストをするにあたっては、対象のメソッドがどのような目的で作成されどんな挙動をしなければいけないのかということを全て洗い出します。結果的に仕様を良く確認することになり、バグを引き起こす仕様漏れを少なくすることができます。
+
+* **リファクタリングや機能追加をしやすくなる**
+
+    リファクタリングとは、コードをより綺麗なかたちに修正する作業のことです。一度テストを通過してしまえば、最終的な結果を維持しリファクタリングをするのが簡単になります。また、新たな機能を追加する際も、従来の箇所は間違いなく動いていることを確認できているので、その結果を崩さないようにするだけで安全に実装することができます。
+
+* **楽しくコードを書ける**
+
+    テストを通過するという快適な体験を重ねることで、コードを書く作業が楽しくなります。注意力が必要で神経をすり減らしやすいプログラミングという作業において、楽しくコードが書ける、ということは非常に重要です。
+
+#### テストの種類
+
+テストは、主に単体テストと統合テストという2種類に分類されます。単体テストとは、単体で動くプログラムが正常に動作するか確かめるテストのことです。統合テストとは、複数のプログラムが組み合わさった機能が正常に動作するか確かめるテストのことです。
+
+* **単体テストとは**
+
+    ひとつのプログラムのまとまりに関して、それ単体が正常に動くか確かめるテストのことを単体テストと呼びます。例えばRailsであれば、モデルクラスひとつ、コントローラークラスひとつにつきそれぞれテストコードを書きます。
+
+* **統合テストとは**
+
+    複数のプログラムが連動して行われる処理が意図した通りに行われるかを確かめるテストのことを統合テストと呼びます。例えばRailsであれば、ユーザーの新規登録における一連の処理をテストすることが考えられます。ユーザーの新規登録用画面から値を入力、送信して、データベースにレコードが追加されるまでの一連の流れをシミュレートするテストコードを書きます。
+
+
+
+
+
+
+<a name="model1"></a>
+# 2章「単体テスト・モデル編①」
+Pictweetのテストコードを書いていきます。
+まずは「rspec-rails」というGemをインストールし、RSpecを利用できるようにします。続いて、RSpecの設定を行います。その後、実際にRSpecのコードを書きながらRSpecの基礎文法を学んでいきます。
+
+## RSpecの利用準備
+
+### Gemをインストール
+
+> rspecインストール
+
+*Gemfile:追加*
+```ruby
+# テスト
+gem 'rspec-rails', '~>3.1.0'
+```
+
+```sh
+$cd ~/projects/pictweet
+#pictweetのディレクトリに移動
+$pwd
+~/projects/pictweet
+#pictweetのディレクトリに居ることを確認
+$bundle install
+#bundle installを実行
+```
+
+
+### RSpecの設定
+
+> RSpec用の設定ファイルを作成
+```sh
+$ rails g rspec:install
+      create  .rspec
+      create  spec
+      create  spec/spec_helper.rb
+      create  spec/rails_helper.rb
+```
+
+* **rails_helper.rb**
+
+    RailsにおいてRSpecを利用する際に、共通の設定を書いておくファイルです。各テスト用ファイルでこちらのファイルを読み込むことで、共通の設定や、メソッドを適用します。
+
+* **spec_helper.rb**
+
+    rails_helper.rbと同じくRSpec用の共通の設定を書いておくファイルですが、こちらはRSpecをRails無しで利用する際に利用します。
+
+>`.rspec`に以下を追加
+```sh
+--format documentation
+```
+
+### RSpecが正常に利用できるか確かめる
+
+RSpecを利用して書いたテストコードは、ターミナルからコマンドを打つことで全て自動的に実行されます。今はまだテストコードを作成していませんが、こちらのコマンドを試すことは可能なので、やってみましょう。
+
+> 確かめる
+```sh
+$ bundle exec rspec
+No examples found.
+
+Finished in 0.0003 seconds (files took 0.15893 seconds to load)
+0 examples, 0 failures
+```
+
+
+### Pictweetの元のコードを編集
+テストコードを書く際に、バリデーションが正常に働くようにコードを修正します。
+
+> app/views/devise/registrations/new.html.erbを以下のように編集
+
+nicknameを入力するフォームを出力しているtext_fieldタグに付いているmaxlength: 6という記述を削除しましょう
+```html
+  <h2>Sign up</h2>
+  <%= form_for(resource, as: resource_name, url: registration_path(resource_name)) do |f| %>
+    <%= devise_error_messages! %>
+
+    <div class="field">
+      <%= f.label :nickname %> <em>(6 characters maximum)</em><br>
+      <%= f.text_field :nickname, autofocus: true %>
+    </div>
+ #省略
+```
+
+
+> app/models/user.rbを以下のように編集
+```ruby
+  class User < ActiveRecord::Base
+  # Include default devise modules. Others available are:
+  # :confirmable, :lockable, :timeoutable and :omniauthable
+  devise :database_authenticatable, :registerable,
+         :recoverable, :rememberable, :trackable, :validatable
+  has_many :tweets
+
+  validates :nickname, presence: true, length: { maximum: 6 }
+
+end
+```
+
+
+
+## モデルクラスのテストコードを書く
+
+まずはじめに、Railsにおいて基礎となる単体テストであるモデルのバリデーションに関するテストコードを書きましょう。Pictweetには「userモデル」が存在するので、こちらに対応するテストコードを書いていきます。
+
+### 事前に知っておくべきこと
+
+* **RSpec用ディレクトリの構造**
+
+RSpecによるテストコードが書かれたファイルのことを、specファイルと呼びます。全てのspecファイルは、先ほどの`rails g rspec:install`コマンドで生成された「specディレクトリ」の中に格納しておきます。
+
+モデルに関するテスト用ファイルであれば`spec/models/`以下に、コントローラーに関するテスト用ファイルであれば`spec/controllers/`以下に格納されます。`app`ディレクトリ以下にあるテストの対象となるコードの在り処と対応させます。
+
+* **specファイルの命名規則**
+
+specファイルは`対応するクラス名_spec.rb`という名前になります。今回はまず「user.rb」に関するspecファイルを作成するので、その場合の名前は「user_spec.rb」になります
+
+* **テストコードの基本**
+
+続いて、「1 + 1が2になることを確かめる」という簡単なテストコードを例として、以下に挙げる基本的なテストコードの文法について解説していきます。
+
+    【例】1 + 1が2になることを確かめるテストコード:
+
+```ruby
+describe 'hogehoge' do
+  it '1 + 1は2になること' do
+    expect(1 + 1).to eq 2
+  end
+end
+```
+
+上記のコードの概要を説明します。
+まず、`describe`というキーワードでテストをグループ化します。
+続いて、テスト1つ(example)として評価される`it do ~ end`のブロックの中に、`expect(X).to eq Y`という形式の式を書いていきます。これが、実際にテストが成功するかどうかチェックされる式(エクスペクテーション)になります。
+
+それでは、以下に挙げるポイントについてそれぞれ見ていきましょう。
+
+*  describe
+
+    1行目の`describe`は、直後の`do ~ end`までのテストのまとまりを作ります。`describe`の後に続く`""`の中にはそのまとまりの説明を書きます。
+
+* itとexample
+
+    2行目の`it`はexampleと呼ばれる実際に動作するテストコードのまとまりを表します。`it`の後に続く`""`の中にはそのexampleの説明を書きます。
+
+* エクスペクテーション
+
+    実際に評価される式のことです。`it do ~ end`の間に書きます。上記の式では`expect(1 + 1).to eq 2`の部分がエクスペクテーションです。
+
+* expect(X).to eq Y
+
+    エクスペクテーションの文法です。xの部分に入れた式の値がYの部分の値と等しければ、テストが成功します。`eq`の部分を、マッチャと言います。
+
+* マッチャ
+
+    エクスペクテーションの中で、テストが成功する条件を示します。例えば`eq`は「等しければ」という意味になります。他にも
+    `include`(含んでいれば)、`valid`(バリデーションされれば)など複数のマッチャが存在します。これらに関しては利用する時に再度説明します。
+
+
+
+### 試しにバリデーションのテストを書いてみよう
+今回はuser_spec.rbを作成し、ユーザーの新規作成時に設定されているバリデーションが正常に機能するかどうかを調べるテストコードを書きます。
+
+> Pictweetのディレクトリに、spec/modelsディレクトリを作成
+```sh
+$ mkdir spec/models
+```
+> Pictweetのディレクトリに、spec/models/user_spec.rbを作成
+```ruby
+require 'rails_helper'
+describe User do
+  describe '#create' do
+    it "is invalid without a nickname" do
+    end
+  end
+end
+```
+
+`it ~ do`の間はそのexampleの説明を書きますが、ここは日本語でも問題ありません。今回は、英語で書いてみましょう。
+
+では、この状態でテストを実行してみましょう。テストを実行するためには、ターミナルでbundle exec rspecというコマンドを実行します。
+
+現状、user_spec.rbには中身のないテストコードが書かれている状態です。
+
+> テストを実行
+```sh
+$ bundle exec rspec
+
+User
+  #create
+    is invalid without a nickname
+
+Finished in 0.00211 seconds (files took 6.02 seconds to load)
+1 example, 0 failures
+```
+
+1行目の`require 'rails_helper'`は、rails_helper.rb内の記述を読み込むことで共通の設定を有効にしています。この1行目の記述は、全てのspecファイルに書き込みます。
+
+3, 4行目に連続して`describe`が登場しています。`describe`は、このようにネスト(入れ子状)にすることができます。ここでは「Userクラスにあるcreateメソッドをテストするまとまり」であることを示しています。このように、`describe`と`do`の間にメソッド名を書く際は`#`をつけるのが慣習です。
+
+
+### nicknameが空の場合登録できないことを確かめるテストコードを書くnicknameが空の場合登録できないことを確かめるテストコードを書く
+
+ではここから「nicknameが空の場合登録できないことを確かめる」exampleを書いていきます。先ほどと同様、先にコードを示し解説する形で進めます。
+
+> user_spec.rbを以下のように編集
+```ruby
+require 'rails_helper'
+describe User do
+  describe '#create' do
+    it "is invalid without a nickname" do
+     user = User.new(nickname: "", email: "kkk@gmail.com", password: "00000000", password_confirmation: "00000000")
+     user.valid?
+     expect(user.errors[:nickname]).to include("can't be blank")
+    end
+  end
+end
+
+```
+
+**【5行目】テストしたいプロパティを持ったuserクラスのインスタンスを新規作成する**
+
+スペックファイルの中では、そのRailsプロジェクトで作成しているモデルクラスを利用することができます。今回は「nicknameが空である場合登録できないこと」を確かめるテストコードを作成したいのでnicknameの値を空にし、それ以外は適当な値をセットした状態でuserクラスのインスタンスを作成しています。
+
+**【6行目】作成したインスタンスがバリデーションによって保存ができない状態かチェックする**
+
+続いて、新規作成したuserクラスのインスタンスがバリデーションに引っかかるかどうかを確かめる`valid?`メソッドを利用します。
+
+* **valid?メソッド**
+
+    `valid?`メソッドを利用すると、ActiveRecord::Baseを継承しているクラスのインスタンスを保存する際に「バリデーションにより保存ができない状態であるか」を確かめることができます。
+
+* **errorsメソッド**
+
+    `valid？`メソッドの返り値はtrue/falseですが、`valid?`メソッドを利用したインスタンス対して`errors`メソッドを利用すると、バリデーションにより保存ができない状態である場合なぜできないのかを確認することができます。
+
+**【7行目】チェックした結果インスタンスが持つエラー文が期待したものであるか確かめる**
+
+expectの引数に関して、`user.errors`に対してハッシュのバリューの取り出し方でカラム名を指定すると、そのカラムが原因のエラー文が入った配列を取り出すことができます。こちらに対して、`include`というマッチャを利用してエクスペクテーションを作っています。
+
+* **includeマッチャ**
+
+    includeマッチャは、引数にとった値がexpectの引数である配列に含まれているかをチェックすることができるマッチャです。
+
+    今回の場合、「nicknameが空の場合はcan't be blankというエラーが出るはずだ」ということがわかっているため、`include("can't be blank")`のように書くことができます。実際にその通りになればこちらのエクスペクテーションはパスし、このコードは意図した動作をすると保証できます。
+
+> テストを実行してみましょう。
+```sh
+$ bundle exec rspec
+
+User
+  #create
+    is invalid without a nickname
+
+Finished in 0.082 seconds (files took 2.66 seconds to load)
+```
+
+
+### 「emailが存在しなければ登録できない」ことを確かめるテスト
+
+> user_spec.rb
+```ruby
+require 'rails_helper'
+describe User do
+  describe '#create' do
+    it "is invalid without a nickname" do
+     user = User.new(nickname: "", email: "kkk@gmail.com", password: "00000000", password_confirmation: "00000000")
+     user.valid?
+     expect(user.errors[:nickname]).to include("can't be blank")
+    end
+  end
+
+  describe '#create' do
+    it "is invalid without a email" do
+     user = User.new(nickname: "bya", email: "", password: "00000000", password_confirmation: "00000000")
+     user.valid?
+     expect(user.errors[:email]).to include("can't be blank")
+    end
+  end
+end
+```
+
+> テストを実行
+```sh
+$ bundle exec rspec
+
+User
+  #create
+    is invalid without a nickname
+  #create
+    is invalid without a email
+
+Finished in 0.07884 seconds (files took 2.43 seconds to load)
+2 examples, 0 failures
+```
+
+
+
+
+
+
+
+
+

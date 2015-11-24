@@ -9,8 +9,12 @@ Notes of my programming experiences.
 
 * [Rails Note](https://github.com/byam/Programming-Notes/tree/master/rails-note/README.mdown)
 
+* [RSpec Note](https://github.com/byam/Programming-Notes/tree/master/rspec-note/README.mdown)
+
 * [JavaScript Note](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/README.md)
 
 * [jQuery Note](https://github.com/byam/Programming-Notes/tree/master/jquery-note)
 
 * [AngularJS](https://github.com/byam/Programming-Notes/tree/master/angularjs-note)
+
+* [Security Note](https://github.com/byam/Programming-Notes/tree/master/security-note)
