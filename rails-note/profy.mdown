@@ -1,0 +1,873 @@
+# Profy
+
+本カリキュラムでは「Profy」と呼ばれるWebアプリケーションを開発します。Profyは、同じグループ内のユーザーと「一問一答形式」で質問と回答を繰り返しながら自分のプロフィールを充実させていくサービスです。イメージをつかむためにも、ぜひ一度Profyにアクセスして利用してみてください。
+
+[Profy](http://profy.tech-camp.in/users/sign_up)
+
+※新規登録時のグループ名は、techcampの後に自分の参加期の入力してください。
+
+(例)TECH::CAMP第4期なら→techcamp4
+
+
+* [1章 はじめに](#create_rails)
+>
+このカリキュラムで作成するアプリケーションの概要を把握します。また、新規Railsアプリケーションを作成して開発を始める準備を整えます。
+
+* [2章 ログイン機能をつくろう](#login)
+>
+新規Railsアプリケーションやデータベースの作成を行ない、開発のための準備を行ないます
+
+* [3章 ユーザーページ、グループページをつくろう](#page)
+>
+各ユーザーのプロフィールを表示するページ、同じグループのメンバーを表示するページを開発していきます
+
+* [4章 タイムラインをつくろう1](#timeline1)
+>
+Profyのメイン機能であるタイムラインを実装していきます。
+
+* [5章 タイムラインをつくろう2](#timeline2)
+>
+テーブルの高度な関連付けなどを実装し、タイムラインをさらに充実させます。
+
+* [6章 機能を充実させる](#functions)
+>
+Profyに機能を加え、アプリケーションの利便性をアップさせます。
+
+
+<a name="create_rails"></a>
+# 1章 はじめに
+
+### 新規Railsアプリケーションを作成する
+
+mysqlデータベースを使用します。
+
+* **ターミナルでrails newコマンドで実行**
+
+```sh
+$ rails new profy -d mysql
+```
+
+
+### 必要なGemを追加する
+
+今回は7つのGemを新しく追加します。
+
+また、データベースを扱うgemであるmysql2の最新バージョン（0.4.0）に現在不具合があるため、低いバージョンを指定します。
+
+* **Gemfileを以下のように編集**
+
+*Gemfile:*
+```ruby
+#7行目付近のmysql2の行を以下のように変更する
+gem 'mysql2', '0.3.18'
+
+#以下は行末に追加する
+gem 'pry-rails'
+gem 'devise'
+gem 'paperclip'
+gem 'kaminari'
+gem 'therubyracer'
+gem 'twitter-bootstrap-rails'
+gem 'bootstrap-material-design', '0.1.4'
+```
+
+* **bundle install**
+
+```sh
+$ bundle install
+```
+
+
+### データベースを作成する
+
+`rake db:create`を実行すると`config/database.yml`の内容にもとづいてデータベースが作成されます。
+
+* **データベースを作成**
+
+```sh
+$ bundle exec rake db:create
+```
+
+
+
+
+<a name="login"></a>
+# 2章 ログイン機能をつくろう
+
+おなじみのdeviseを使ってログイン機能をつくっていきます。
+今回作成するアプリケーションのProfyでは、メールアドレスの認証を実装します。
+
+これまではメールアドレスを入力さえすれば、新規登録とログインが可能でしたが、今回はサービスから送られてきた
+メールから認証しないとログインすることができないようにします。
+
+
+## ログイン機能をつくろう:基本設定
+
+* **deviseの設定ファイルを生成**
+
+```sh
+$ bundle exec rails g devise:install
+```
+
+* **新規作成されるファイル**
+
+    * config/initializers/devise.rb
+    * config/locales/devise.en.yml
+
+生成されたファイルについて解説します。config/initializersはrailsを起動したときに読み込まれる設定ファイルを置きます。
+
+ファイル名 |  役割
+- | -
+config/initializers/devise.rb  | deviseに関する設定が記述されています。初期設定からカスタマイズする際に編集します。
+config/locales/devise.en.yml    |バリデーション時エラーメッセージなどが設定されています。デフォルトでは全て英語になっています。
+
+* **手動で行うべき設定が表示されています。１〜５の手順にそって設定をしていきましょう**
+
+```sh
+  ===============================================================================
+
+  Some setup you must do manually if you haven't yet:
+
+    1. Ensure you have defined default url options in your environments files. Here
+       is an example of default_url_options appropriate for a development environment
+       in config/environments/development.rb:
+
+         config.action_mailer.default_url_options = { host: 'localhost', port: 3000 }
+
+       In production, :host should be set to the actual host of your application.
+
+    2. Ensure you have defined root_url to *something* in your config/routes.rb.
+       For example:
+
+         root to: "home#index"
+
+    3. Ensure you have flash messages in app/views/layouts/application.html.erb.
+       For example:
+
+         <p class="notice"><%= notice %></p>
+         <p class="alert"><%= alert %></p>
+
+    4. If you are deploying on Heroku with Rails 3.2 only, you may want to set:
+
+         config.assets.initialize_on_precompile = false
+
+       On config/application.rb forcing your application to not access the DB
+       or load models when precompiling your assets.
+
+    5. You can copy Devise views (for customization) to your app by running:
+
+         rails g devise:views
+
+  ===============================================================================
+```
+
+
+* **認証メールのURLを設定する**
+
+*config/environments/development.rb:*
+```ruby
+config.action_mailer.default_url_options = { host: 'localhost', port: 3000 }
+```
+
+ユーザーの新規登録などで認証メールを送った際に文中にある認証リンクのURLを設定します。
+ローカルで開発する際のURLは、localhost:3000なので上記のような設定になります。
+
+
+* **ルートパスを設定する**
+
+今回のアプリケーションではtop_controllerのindexアクションをルートパスに設定します。
+
+*routes.rb:*
+```ruby
+    root to: "top#index"
+```
+
+今回は以下の16行目に記述されている通りdeviseのメッセージに沿っているので`to:`を記述しています。`to:`を書いても書かなくても機能上の変化はありません。また`to:`は省略できます。
+
+
+* **top_cotrollerを作成**
+
+```sh
+$ rails g controller top
+```
+
+
+*top_cotroller.rb:*
+```ruby
+    def index
+    end
+```
+
+
+* **index.html.erbを新規作成**
+```sh
+$ cd app/views/top/
+$ touch index.html.erb
+```
+
+
+* **フラッシュメッセージのタグをビューに埋め込む**
+
+rails g devise:installを実行時に表示された先ほどの以下のメッセージ
+```sh
+  3. Ensure you have flash messages in app/views/layouts/application.html.erb.
+     For example:
+       <p class="notice"><%= notice %></p>
+       <p class="alert"><%= alert %></p>
+```
+
+`<%= notice %>` や `<%= alert %>` はフラッシュメッセージと呼ばれるものです。
+これらをすべてのビューで共通のレイアウトファイルである`app/views/layouts/application.html.erb`に追記するようにと言われています。
+
+* **フラッシュメッセージ**
+
+フラッシュメッセージはログイン時の「ようこそ」という一時的に出すメッセージや、フォーム送信時の入力エラーなど、ユーザに簡単な通知を行いたい時に利用します。
+詳しくはこちらの[ブログ](http://ruby-rails.hatenadiary.com/entry/20141127/1417086075)を参考にしてください。
+
+今回の場合はdeviseが自動で表示してくれるフラッシュメッセージを表示するためにレイアウトファイルに、フラッシュメッセージ用のタグを書いていきます。
+通常は、`<%= notice %>`、`<%= alert %>`こちらを追記するのですが、今回はtwitter-bootstrap-railsというCSSフレームワークのgemを利用しているため、ビューヘルパーの`<%= bootstrap_flash %>`と記述します。
+
+今は`<%= bootstrap_flash %>`と書くことで「ログインに成功しました」「ログアウトしました」といったようなdevise が準備しているメッセージが表示できるようになったとイメージできれば大丈夫です。
+
+*app/views/layouts/application.html.erb:*
+```html
+<!DOCTYPE html>
+<html lang='ja'>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=Edge,chrome=1'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Profy</title>
+    <%= csrf_meta_tags %>
+    <%= stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track' => true %>
+    <%= javascript_include_tag 'application', 'data-turbolinks-track' => true %>
+  </head>
+  <body>
+    <script type='text/javascript' charset='utf-8'>
+      $(function(){
+        $.material.init();
+      });
+    </script>
+    <%= render partial: 'common/header' %>
+    <div class='container'>
+      <div class='row'>
+        <div class='col-lg-12'>
+          <%= bootstrap_flash %>
+          <%= yield %>
+        </div>
+      </div>
+      <footer class='row text-center'>
+        <p>(C) Profy 2015</p>
+      </footer>
+    </div>
+  </body>
+</html>
+```
+
+
+18行目の `<%= render partial: 'common/header' %>` はcommonディレクトリ配下の_header.html.erbの部分テンプレートを呼び出すことを意味しています。
+
+ここでは、ヘッダー部分の部分テンプレートを読み込んでいるので、この設定に必要なファイルを設置しましょう。
+
+
+* **app/views/common/以下に_header.html.erbファイルを作成**
+
+```html
+<% if user_signed_in? %>
+  <div class='navbar navbar-default navbar-fixed-top'>
+    <div class='container'>
+      <button type='button' class='navbar-toggle' data-toggle='collapse' data-target='.navbar-responsive-collapse'>
+        <span class='icon-bar'></span>
+        <span class='icon-bar'></span>
+        <span class='icon-bar'></span>
+      </button>
+      <%= link_to root_path, :class => 'navbar-brand' do %>
+        <%= image_tag 'logo.png' %> <small class='hidden-xs hidden-sm'>仲間とプロフィールを共有しよう！</small>
+      <% end %>
+      <div class='navbar-collapse collapse navbar-responsive-collapse navbar-right'>
+        <ul class='nav navbar-nav'>
+          <li><%= link_to 'HOME', root_path %></li>
+          <li class='dropdown'>
+            <a href='#' class='dropdown-toggle' data-toggle='dropdown' role='button' aria-expanded='false'>アカウント <span class='caret'></span></a>
+            <ul class='dropdown-menu' role='menu'>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+<% end %>
+````
+
+
+* **app/views/common/以下に_login_logo.html.erbファイルを作成**
+
+```html
+<div class='sign_up_logo'>
+  <%= image_tag 'logo.png' %>
+  <small>仲間とプロフィールを共有しよう！</small>
+</div>
+```
+
+
+### デバイスのビューをカスタマイズする
+
+deviseビューをカスタマイズするには`rails g devise:views`コマンドを使って生成します。
+
+* **rails g devise:views**
+
+deviseはgemをインストールしただけで、ログイン画面や、新規登録画面が用意されます。
+※これらの画面は、deviseのgemの中に記述されているためアプリケーション内で見つけることはできません。
+
+しかし、ほとんどの場合オリジナルでHTMLをカスタマイズして使うケースが多いため、
+`rails g devise:views`コマンドでビューファイル群を生成します。
+
+* **deviseのビューファイルを生成**
+
+```sh
+$ rails g devise:views
+```
+
+* **新規作成されるファイル**
+
+    * app/views/devise/mailer/confirmation_instructions.html.erb
+    * app/views/devise/mailer/reset_password_instructions.html.erb
+    * app/views/devise/mailer/unlock_instructions.html.erb
+    * app/views/devise/passwords/edit.html.erb
+    * app/views/devise/passwords/new.html.erb
+    * app/views/devise/registrations/edit.html.erb
+    * app/views/devise/registrations/new.html.erb #今回カスタマイズするファイル
+    * app/views/devise/sessions/new.html.erb #今回カスタマイズするファイル
+    * app/views/devise/shared/_links.html.erb
+    * app/views/devise/unlocks/new.html.erb
+
+今回カスタマイズするのは、ログイン画面の`app/views/devise/sessions/new.html.erb`と新規登録画面の`app/views/devise/registrations/new.html.erb`です。
+
+* **app/views/devise/registrations/new.html.erbを以下のように編集**
+
+```html
+<div class='regist_back'>
+  <div class='log-up'>
+    <%= render partial: 'common/login_logo' %>
+
+    <div class='log-in-inner'>
+      <h2>会員登録</h2>
+
+      <%= form_for(resource, as: resource_name, url: registration_path(resource_name)) do |f| %>
+        <%= devise_error_messages! %>
+
+        <div class='form-group'>
+          <%= f.label :メールアドレス %><br />
+          <%= f.email_field :email, autofocus: true, class: 'form-control' %>
+        </div>
+
+        <div class='form-group'>
+          <%= f.label :パスワード %>
+          <% if @validatable %>
+            <em>(<%= @minimum_password_length %> 文字以上)</em>
+          <% end %><br />
+          <%= f.password_field :password, autocomplete: 'off', class: 'form-control' %>
+        </div>
+
+        <div class='form-group'>
+          <%= f.label :パスワード（確認） %><br />
+          <%= f.password_field :password_confirmation, autocomplete: 'off', class: 'form-control' %>
+        </div>
+
+        <div class='actions'>
+          <%= f.submit class: 'btn btn-primary withripple', value: '新規登録' %>
+        </div>
+      <% end %>
+
+      <%= render 'devise/shared/links' %>
+    </div>
+  </div>
+</div>
+```
+
+
+* **app/views/devise/sessions/new.html.erbを以下のように編集**
+
+```html
+<div class='login_back'>
+  <div class='log-in'>
+    <%= render partial: 'common/login_logo' %>
+    <div class='log-in-inner'>
+      <h2>ログイン</h2>
+
+      <%= form_for(resource, as: resource_name, url: session_path(resource_name)) do |f| %>
+        <% if alert %>
+          <p class='alert alert-danger'><%= alert %></p>
+        <% end %>
+
+        <div>
+          <%= f.email_field :email, autofocus: true, placeholder: 'メールアドレス', class: 'input form-control' %>
+        </div>
+
+        <div>
+          <%= f.password_field :password, autocomplete: 'off', placeholder: 'パスワード', class: 'input form-control' %>
+        </div><br />
+
+        <% if devise_mapping.rememberable? %>
+          <div class='checkbox'>
+              <label>
+                <input id='user_remember_me' name='user[remember_me]' type='checkbox' value='1'>
+                <%= f.label :ログイン情報を記憶する, class: 'memory-check' %>
+              </label>
+          </div>
+        <% end %>
+
+        <div>
+          <%= f.submit class: 'btn btn-primary withripple', value: 'ログイン' %>
+        </div>
+      <% end %>
+
+      <div class='login_link'>
+        <%= render 'devise/shared/links' %>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+
+### ログインのためのUserモデルを作成する
+
+この時点では、まだ基本的な設定をしただけなのでログインをすることはできません。
+次にdeviseのコマンドを使って、ユーザーモデルを作成していきます。
+
+* **rails g devise モデル名**
+
+rails g devise モデル名はログインに紐付いたモデルの生成とルーティングの追加を行ってくれるdeviseのコマンドです。
+
+生成されるファイルはrails g model モデル名で生成されるファイルと似ています。
+ActiveRecordを継承したモデルとテーブルのカラム情報などを記述したmigrationファイル、それに関連したファイルです。
+rails g devise モデル名を実行するとdeviseを利用するために初期設定された状態でファイルが生成されるので便利です。モデル名は、userにかぎらず、member、guestなども自由に指定できます。
+
+```sh
+$ bundle exec rails g devise user
+```
+
+* **devise_for**
+
+*config/routes.rb:*
+```ruby
+Rails.application.routes.draw do
+  devise_for :users
+  root to: "top#index"
+```
+devise_forはログインまわりに必要なルーティングを一気に生成してくれるdeviseのヘルパーメソッドです。
+
+
+### usersテーブルにメール認証に必要なカラムを作成する
+
+メール認証を始めとするdeviseの具体的な使い方を知りたい際は、 [githubのreadme](https://github.com/plataformatec/devise)を見るのが一番です。
+
+* **migrationファイルの＃Confirmableセクションのコメントアウトを外して保存してください。**
+
+*db/migrate/2015xxxxxxxxxx_devise_create_users.rb:*
+```ruby
+## Confirmable
+t.string   :confirmation_token
+t.datetime :confirmed_at
+t.datetime :confirmation_sent_at
+t.string   :unconfirmed_email # Only if using reconfirmable
+```
+
+
+```sh
+$ rake db:migrate
+```
+
+### ログインしていないときにルートにアクセスすると、ログイン画面にリダイレクトするようにする
+
+* **authenticate_user!**
+
+authenticate_user!はユーザがログインしているかどうかを確認し、ログインしていない場合はユーザをログインページにリダイレクトするdeviseのメソッドです。
+通常、before_actionを合わせて使用します。before_actionのexceptやonlyオプションを組み合わせると特定のアクションを指定することもできます。
+
+*app/controllers/application_controller.rb:*
+```ruby
+    before_action :authenticate_user!
+```
+
+ApplicationControllerは、TopControllerをはじめとするあらゆるコントローラーが継承するため、
+ここに`before_action :authenticate_user!`を設定すると、すべてのアクセスに対してログインをしているかの確認が入るようになります。さっそくリダイレクトがかかるか確認してみましょう。
+
+
+### Railsを日本語化する
+
+先ほどリダイレクトされた際に、フラッシュで表示されたエラーメッセージが`You need to sign in or sign up before continuing.`と英語で出力されたのにお気づきでしょうか。
+
+RailsのWebアプリの多言語化をサポートしてくれるGem、i18nを利用して、この部分を日本語化していきます。
+
+
+* **i18n**
+
+Railsの国際化対応（日本語化対応）は「i18n」というGemを使います。
+i18nは、internationalization(国際化)という意味です。18はiとnの間にある文字数を指しています。
+
+i18nを使うと簡単に言語を切り替えることが可能になります。一例を紹介します。
+
+【例】
+
+> 日本語の設定ファイル
+
+*config/locales/ja.yml:*
+```yml
+  ja:
+    view:
+      hello: "こんにちは、世界！"
+```
+
+
+> 英語の設定ファイル
+
+*config/locales/en.yml:*
+```yml
+  en:
+    view:
+      hello: "Hello！World!"
+```
+
+> 言語設定を日本語を指定 ※application.rbはrailsの基本的な環境設定をするファイルです。
+
+*config/application.rb:*
+```ruby
+config.i18n.default_locale=:ja#英語の場合は:en
+```
+
+> 文字列を出力
+
+*app/views/sample/sample.html.erb:*
+```html
+<%= t('view.hello') %>
+```
+
+言語指定を日本語にしているため"こんにちは、世界！"と表示されます。
+i18nの機能はこれだけではなく、アプリケーションの言語を切り替えるために様々な機能が用意されています。
+詳しくは[こちらのブログ](http://morizyun.github.io/blog/i18n-english-rails-ruby-many-languages/#4)をご覧ください。
+
+今は全ての機能を覚える必要はありません。ただ、言語設定に関するものはi18nを使うと覚えておき、必要なときに調べられれば大丈夫です。
+
+早速日本語化を進めていきましょう。
+
+
+* **config/application.rbを編集**
+
+*config/application.rb:*
+```ruby
+    config.i18n.default_locale = :ja #コメントアウトしている場合は外す。
+```
+
+ja.ymlは基本的なrails処理の日本語化ファイル、devise.ja.ymlはdeviseに関わる処理の日本語化ファイルです。
+これらの日本語化ファイルはWEBで検索すればダウンロードすることができます。
+
+
+### メール送信用サーバー（SMTPサーバー）の設定
+railsアプリケーション自体にメールを送る機能はありません。railsアプリケーションからメールを送るためにはSMTPサーバーを設定する必要があります。
+※メールの仕組みを理解したい方は[こちらの記事](http://itpro.nikkeibp.co.jp/article/COLUMN/20071108/286748/)をご覧ください。
+
+ 本設定にはgmailのアドレスとパスワードが必要です。お持ちでない方はgmailアカウントの作成をお願いします。[gmailアカウントへのログイン](https://accounts.google.com/ServiceLogin?sacu=1)
+
+
+gmailに2段階認証を設定されている方は、設定を解除する、もしくは新たにアカウントを作成するようにしてください。
+
+* **config/environments/development.rbに追記してください。変更するのはご自身のアドレスとパスワードだけで構いません。**
+
+*config/environments/development.rb:*
+```ruby
+  config.action_mailer.default_url_options = { host: 'localhost', port: 3000 }
+  config.action_mailer.raise_delivery_errors = true
+  config.action_mailer.delivery_method = :smtp
+  config.action_mailer.smtp_settings = {
+    :enable_starttls_auto => true,
+    :address => "smtp.gmail.com",
+    :port => 587,
+    :domain => 'smtp.gmail.com',
+    :user_name => "●●●●●@gmail.com", #ご自身のgmailアドレス
+    :password => "●●●●●●●●", #ご自身のgmailアドレスのパスワード
+    :authentication => 'login',
+  }
+```
+
+
+
+### ログアウトをつける
+
+*app/views/common/_header.html.erb:*
+```html
+      <div class="navbar-collapse collapse navbar-responsive-collapse navbar-right">
+        <ul class="nav navbar-nav">
+          <li><%= link_to "HOME", root_path %></li>
+          <li class="dropdown">
+            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">アカウント <span class="caret"></span></a>
+            <ul class="dropdown-menu" role="menu">
+              <li><%= link_to "ログアウト", destroy_user_session_path, method: :delete %></li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+```
+
+
+
+
+
+## ログイン機能をつくろう:応用設定
+
+今回行うカスタマイズは新規登録時、ログイン時の項目にグループ名を増やすというものです。
+イメージとしてはチャットサービスのSlackが近いでしょう。ユーザーがサービスに登録した時点でどこかのグループに所属することとなります。
+企業向けエンタープライズ製品などでもこういった仕様は多いと思います。
+
+### グループ名を入力するフォームをつくろう
+
+*app/views/devise/registrations/new.html.erb:*に追加
+```html
+    <div class='form-group'>
+          <%= f.label :パスワード（確認） %><br />
+          <%= f.password_field :password_confirmation, autocomplete: 'off', class: 'form-control' %>
+        </div>
+    <!--以下を追記-->
+        <div class='form-group'>
+          <%= f.label :グループ名（半角英数） %><br />
+          <%= f.text_field :group_key, autofocus: true, class: 'form-control' %>
+        </div>
+```
+
+* **attr_accessor**
+
+データの読み書きできるプロパティをモデルに追加するメソッドです。
+
+詳しい内容は[こちらのリンク](http://ref.xaio.jp/ruby/classes/module/attr_accessor)をご覧ください。
+
+【例】
+```ruby
+#attr_accessorを定義しない場合
+class Book
+end
+
+book = Book.new
+book.title = "Programming Ruby" #この場合はエラーが出力される
+#=> test.rb:6:in `<main>': undefined method `title=' for #<Book:0x007fbb7c0e7d80> (NoMethodError)
+
+#attr_accessorを定義した場合
+class Book
+  attr_accessor :title
+end
+
+book = Book.new
+book.title = "Programming Ruby" #titleプロパティを定義したのでエラーが発生しない
+puts book.title
+#=> "Programming Ruby"
+```
+
+ActiveRecordを継承したクラスの場合自動でテーブルのカラム名がプロパティとして定義されます。今回のようにフォームへ新たに、カラムとしては存在しないプロパティを追加するためにはattr_accessorをUserモデルに追加する必要があります。
+
+* **`app/models/user.rb`を以下のように更新**
+
+```ruby
+class User < ActiveRecord::Base
+
+  #accessor
+  attr_accessor :group_key
+```
+
+
+* **ログイン画面にもグループ名を記述**
+
+*app/views/devise/sessions/new.html.erb:*
+```html
+        <div>
+          <%= f.password_field :password, autocomplete: 'off', placeholder: 'パスワード', class: 'input form-control' %>
+        </div>
+        <br>
+        <div class='form-group'>
+          <%= f.label :グループ名（半角英数） %><br />
+          <%= f.text_field :group_key, autofocus: true, class: 'form-control' %>
+        </div>
+        <% if devise_mapping.rememberable? %>
+          <div class='checkbox'>
+          </div>
+        <% end %>
+
+```
+
+
+### グループ名を保存するテーブルをつくろう
+
+フォームからProfyに登録したユーザーは必ずどこかのグループに属する事になります。
+誰がどのグループに所属しているのか記録するために、usersテーブル1レコードごとにグループ名を文字列で書いていくのは冗長ですよね。groupsテーブルを作成してusersテーブルとリレーションさせるようにしましょう。
+
+
+* **グループモデル作成**
+```sh
+$ rails g model group
+```
+
+*db/migrate/2015xxxxxxxxxxx_create_groups.rb:*
+```ruby
+class CreateGroups < ActiveRecord::Migration
+  def change
+    create_table :groups do |t|
+      t.string :key, unique: true
+      t.text :detail
+      t.timestamps null: false
+    end
+  end
+end
+```
+
+```sh
+$ rake db:migrate
+```
+
+* **usersテーブルにgroup_idを保存**
+```sh
+$ rails g migration AddGroupIdToUsers
+```
+
+*db/migrate/2015xxxxxxxxxxx_add_group_id_to_users.rb:*
+```ruby
+class AddGroupIdToUsers < ActiveRecord::Migration
+  def change
+    add_column :users, :group_id, :integer
+  end
+end
+```
+
+```sh
+$ rake db:migrate
+```
+
+
+### アソシエーションを定義
+
+*app/model/user.rb:*
+```ruby
+class User < ActiveRecord::Base
+  # accessor
+  attr_accessor :group_key
+
+  # Include default devise modules. Others available are:
+  # :confirmable, :lockable, :timeoutable and :omniauthable
+  devise :database_authenticatable, :registerable,
+         :recoverable, :rememberable, :trackable, :validatable, :confirmable
+
+  # association
+  belongs_to :group
+end
+```
+
+*app/model/group.rb:*
+```ruby
+class Group < ActiveRecord::Base
+    # association
+    has_many :users
+end
+```
+
+### パラメータとして送られる:group_keyが許可されるようにしよう
+
+先ほど、フォームにgroup_keyの項目を追加したので新規登録やログインフォームからリクエストにgroup_keyが含まれるようになります。
+deviseを使っている場合、デフォルトでストロングパラメーターが設定されていてメールアドレス、パスワード以外のキーを受け取ることはできません。group_keyを受け取ることができるようにapplication_controller.rbに設定をしていきます。
+
+* **app/controllers/application_controller.rbを以下のように更新**
+```ruby
+class ApplicationController < ActionController::Base
+  before_action :authenticate_user!
+  # Prevent CSRF attacks by raising an exception.
+  # For APIs, you may want to use :null_session instead.
+  protect_from_forgery with: :exception
+  before_action :configure_permitted_parameters, if: :devise_controller?
+
+  def configure_permitted_parameters
+    # sign_inのときに、group_keyも許可する
+    devise_parameter_sanitizer.for(:sign_in) << :group_key
+    # sign_upのときに、group_keyも許可する
+    devise_parameter_sanitizer.for(:sign_up) << :group_key
+    #account_updateのときに、group_keyも許可する
+    devise_parameter_sanitizer.for(:account_update) << :group_key
+  end
+end
+```
+
+`before_action :configure_permitted_parameters, if: :devise_controller?`この部分はリクエストがdeviseのコントローラーの場合はconfigure_permitted_parametersを実行するという設定をしました。簡単に言うと、新規登録、ログイン処理等で実行されるということです。devise_controller?はdeviseのヘルパーメソッドです。configure_permitted_parametersでは許可するパラメーターを追加しています
+
+
+### ユーザーの新規登録時にグループIDが保存されるようにする
+
+複数の認証キーで認証できるように設定を行ないます。
+このあたりはRuby on Railsというよりdeviseのカスタマイズの領域なのでなんとなく理解してもらえば大丈夫です。
+
+*app/models/user.rb:*
+```ruby
+class User < ActiveRecord::Base
+
+  #accessor
+  attr_accessor :group_key
+
+  # Include default devise modules. Others available are:
+  # :confirmable, :lockable, :timeoutable and :omniauthable
+  devise :database_authenticatable, :registerable,
+         :recoverable, :rememberable, :trackable,
+         :validatable, :confirmable,
+         authentication_keys: [:email, :group_key]
+
+  #association
+  belongs_to :group
+
+  #validation
+  before_validation :group_key_to_id, if: :has_group_key?
+
+  def self.find_first_by_auth_conditions(warden_conditions)
+    conditions = warden_conditions.dup
+    group_key = conditions.delete(:group_key)
+    group_id = Group.where(key: group_key).first
+    email = conditions.delete(:email)
+
+    # devise認証を、複数項目に対応させる
+    if group_id && email
+      where(conditions).where(["group_id = :group_id AND email = :email",
+        { group_id: group_id, email: email }]).first
+    elsif conditions.has_key?(:confirmation_token)
+      where(conditions).first
+    else
+      false
+    end
+  end
+
+  private
+  def has_group_key?
+    group_key.present?
+  end
+
+  def group_key_to_id
+    group = Group.where(key: group_key).first_or_create
+    self.group_id = group.id
+  end
+end
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
