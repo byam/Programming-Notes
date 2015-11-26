@@ -16,6 +16,10 @@ Ruby on Railsにおけるテストは、「RSpec」というgemを利用して�
 
     引き続きモデルクラスのテストコードを作成します。テストを書く際に利用すると便利なfactory_girlというGemを紹介し、実際に利用してみます。
 
+    * [factory_girlを導入](#model2_fg)
+    * [テストコードを書く際の原則について学ぼう](#model2_rule)
+    * [全ての条件を網羅したバリデーションテストを書こう](#model2_all)
+
 * [4章「単体テスト・コントローラー編」](#controller)
 
     もうひとつの単体テストであるコントローラークラスのテストコードを作成していきます。factory_girlの応用的な使い方や、ダミーのデータを作成するためのGemであるFakerの利用方法なども学んでいきます。
@@ -359,6 +363,609 @@ User
 Finished in 0.07884 seconds (files took 2.43 seconds to load)
 2 examples, 0 failures
 ```
+
+
+
+
+<a name="model2"></a>
+# 3章「単体テスト・モデル編②
+
+factory_girlというgemを導入し、specファイルの記述を効率化します。また、テストコードを書く際には常に気をつけなければいけない原則があるので、そちらを学習していただきます。最後に、Pictweetのユーザー登録に関するテストコードを全て完成させていただきます。
+
+<a name="model2_fg"></a>
+## factory_girlを導入
+現在user_spec.rbには2つのexampleが存在しますが、それぞれUserクラスのインスタンスを作成し値をセットしています。これを全てのexampleで行うのは大変です。そこで、factory_girlというgemを利用してこの作業を効率化しましょう。
+
+### factory_girl
+
+簡単にダミーのインスタンスを作成することができるGemです。他のファイルで予め各クラスのインスタンスに定めるプロパティを設定しておき、specファイルからメソッドを利用してその通りのインスタンスを作成します。factory_girlを利用すれば、user_spec.rbは以下のように短い記述にすることができます。
+
+*user_spec.rb:*
+```ruby
+require 'rails_helper'
+
+describe User do
+  describe '#create' do
+
+    it "is invalid without a nickname" do
+      user = build(:user, nickname: nil)
+      user.valid?
+      expect(user.errors[:nickname]).to include("can't be blank")
+    end
+
+    it "is invalid without a email" do
+      user = build(:user, email: nil)
+      user.valid?
+      expect(user.errors[:email]).to include("can't be blank")
+    end
+
+  end
+end
+```
+Userクラスのインスタンスを作成している部分が随分短く記述されていることがわかります。
+
+> Gemfileを編集。rspecと同じグループの中に追記
+```ruby
+group :development, :test do
+  #省略
+  gem 'rspec-rails', "~> 3.1.0"
+  gem 'factory_girl_rails', "~> 4.4.1"
+end
+```
+
+```sh
+$ bundle install
+```
+
+> specディレクトリ直下に「factories」というディレクトリを作成。その中に、作成したインスタンスの複数形のファイル名でRubyのファイルを作成します。
+
+*spec/factories/users.rb:*
+```ruby
+FactoryGirl.define do
+
+  factory :user do
+    nickname              "abe"
+    email                 "kkk@gmail.com"
+    password              "00000000"
+    password_confirmation "00000000"
+  end
+
+end
+```
+これで準備は完了です。このようにすると、specファイルの中で特定のメソッドにより簡単にインスタンスを生成したり、DBに保存したりできるようになります。
+
+* **buildメソッド**
+
+引数にシンボル型で取ったクラス名のインスタンスを、factory_girlの記述をもとに作成します。例えば前述のusers.rbが存在する場合、下記2つの変数userの値は同じ値になります。
+
+*factory_girlによるインスタンスの生成:*
+```ruby
+#factory_girlを利用しない場合
+user = User.new(nickname: "abe", email: "kkk@gmail.com", password: "00000000", password_confirmation: "00000000")
+#factory_girlを利用する場合
+user = FactoryGirl.build(:user)
+```
+
+* **createメソッド**
+
+buildとほぼ同じ働きをしますが、createの場合はテスト用のDBに値が保存されます。
+
+*factory_girlによるインスタンスの生成:*
+```ruby
+#createしたインスタンスはDBに保存される
+user = FactoryGirl.create(:user)
+```
+
+
+### factory_girlの記法の省略
+factory_girlによってインスタンスを作成する際に、レシーバーであるクラスのFactoryGirlという記述を省略することができます。そのためには、spec/rails_helper.rbを以下のように編集します。
+
+*spec/rails_helper.rb:*
+```ruby
+#省略
+RSpec.configure do |config|
+  #下記の記述を追加
+  config.include FactoryGirl::Syntax::Methods
+
+  #省略
+
+end
+```
+すると、先ほどのuser_spec.rbの記述はFactoryGirlを省いて以下のように省略できます。
+
+*user_spec.rb:*
+```ruby
+  #nicknameが空では登録できないこと
+  it "is invalid without a nickname" do
+    user = build(:user, nickname: "")
+    user.valid?
+    expect(user.errors[:nickname]).to include("can't be blank")
+  end
+```
+
+
+###セットした値の上書き
+factoriesディレクトリ内のファイルで予めセットした値を変更しインスタンスを生成したい場合は、specファイル側で引数を増やし、上書きすることができます。
+引数はカラム名: 値という形のハッシュで、いくつでも追加することができます。
+
+*セットした値を変更する:*
+```sh
+#デフォルトの場合
+user = build(:user)
+=><User:0x007fcabab94650
+ id: nil,
+#中略
+nickname: "abe">
+user = build(:user, nickname: "shinbo")
+=><User:0x007fcac2a88998
+ id: nil,
+#中略
+nickname: "shinbo">
+```
+
+
+
+<a name="model2_rule"></a>
+## テストコードを書く際の原則について学ぼう
+
+### テストコードを書く際の原則
+
+テストコードを書くにあたっては、守るべき以下の原則があります。
+
+* ①各exampleで期待する値は1つ
+
+* ②期待する結果をはっきりわかりやすく記述
+
+* ③起きて欲しいことと起きてほしくないこと両方をテストする
+
+* ④境界値をテストする
+
+* ⑤可読性を考えつつ、適度にDRYにする
+
+### ①各exampleで期待する値は1つ
+
+テストコードにおいては、example(it "hoge" do ~ end のまとまり)ひとつに必ずエクスペクテーション(expext(◯◯).to ~)をひとつ含めます。
+２つ以上含めてしまうと、どちらのエクスペクテーションでエラーが出たのか判別できず、正確なテストができないためです。
+
+### ②期待する結果をはっきりわかりやすく記述する
+
+it "〜" doの"〜"の部分は、期待する結果を書いておく場所です。
+明快な書き方をすることで、自身の確認やチームメンバーとの共有、顧客への仕様説明が楽になり、コミュニケーションミスも減ります。
+
+### ③起きて欲しいことと起きてほしくないこと両方をテストする
+
+起きて欲しいことをチェックしたら、起きてほしくない場合にどんな結果が起こるかも想定しその通りになるか確かめましょう。
+予期せぬ動作が残るのを防ぐためです。
+
+### ④境界値をテストする
+
+6文字以上でバリデーションに引っかかる、という条件の場合は「5文字までは正常」と「6文字以上ならば異常」を確かめるようにします。こちらも、予期せぬ動作を防ぐためです。
+
+### ⑤可読性を考えつつ、適度にDRYにする
+
+DRYとは「Don't Repeat Yourself」の略で、何度も同じことを記述せず効率的にコードを書こう、という原則を意味します。しかし、テストコードにおいては何よりもわかりやすさを優先しましょう。その結果たとえDRYに添えなくなったとしても、わかりづらくなってテストの見落としが起きるよりはましだからです。
+
+
+<a name="model2_all"></a>
+## 全ての条件を網羅したバリデーションテストを書こう
+
+テストコードの原則に沿って、Pictweetのユーザー新規登録時のバリデーションに関するテストコードを完成させましょう。
+
+### テストすべき項目一覧
+
+今回、ユーザーの登録時に確認が必要なバリデーションのテストは以下です。
+
+* nicknameとemail、passwordとpassword_confirmationが存在すれば登録できること
+
+    まずは全ての条件が整っている場合に「登録ができること」を確かめるパターンです。この場合は、「正常に保存されることを期待する」エクスペクテーションが必要です。この時利用するマッチャが`be_valid`マッチャです。
+
+* nicknameが空では登録できないこと
+* emailが空では登録できないこと
+* passwordが空では登録できないこと
+* passwordが存在してもpassword_confirmationが空では登録できないこと
+* nicknameが7文字以上であれば登録できないこと
+* nicknameが6文字以下では登録できること
+* 重複したemailが存在する場合登録できないこと
+
+    先にユーザーを１人登録しておき、その後emailに同じ値を持つ別のユーザーが登録できるかチェックすることで確かめられます。
+    この時含まれるエラー文は、「has already been taken」です。
+
+* passwordが8文字以上であれば登録できること
+* passwordが7文字以下であれば登録できないこと
+
+
+*user_spec.rb:*
+```ruby
+require 'rails_helper'
+
+describe User do
+  describe '#create' do
+    it "nicknameとemail、passwordとpassword_confirmationが存在すれば登録できること" do
+      user = build(:user)
+      expect(user).to be_valid
+    end
+
+    it "nicknameが空では登録できないこと" do
+      user = build(:user, nickname: "")
+      user.valid?
+      expect(user.errors[:nickname]).to include("can't be blank")
+    end
+
+    it "emailが空では登録できないこと" do
+      user = build(:user, email: "")
+      user.valid?
+      expect(user.errors[:email]).to include("can't be blank")
+    end
+
+    it "passwordが空では登録できないこと" do
+      user = build(:user, password: "")
+      user.valid?
+      expect(user.errors[:password]).to include("can't be blank")
+    end
+
+    it "passwordが存在してもpassword_confirmationが空では登録できないこと" do
+      user = build(:user, password_confirmation: "")
+      user.valid?
+      expect(user.errors[:password_confirmation]).to include("doesn't match Password")
+    end
+
+    it "nicknameが7文字以上であれば登録できないこと" do
+      user = build(:user, nickname: "aaaaaaaa")
+      user.valid?
+      expect(user.errors[:nickname][0]).to include("is too long")
+    end
+
+    it "nicknameが6文字以下では登録できること" do
+      user = build(:user, nickname: "byam")
+      expect(user).to be_valid
+    end
+
+    it "重複したemailが存在する場合登録できないこと" do
+      user = create(:user)
+      next_user = build(:user, email: user.email)
+      next_user.valid?
+      expect(next_user.errors[:email]).to include("has already been taken")
+    end
+
+    it "passwordが8文字以上であれば登録できること" do
+      user = build(:user, password: "000000000", password_confirmation: "000000000")
+      expect(user).to be_valid
+    end
+
+    it "passwordが7文字以下であれば登録できないこと" do
+      user = build(:user, password: "0000000", password_confirmation: "0000000")
+      user.valid?
+      expect(user.errors[:password][0]).to include("is too short")
+    end
+
+  end
+end
+```
+
+
+
+
+
+<a name="controller"></a>
+# 4章「単体テスト・コントローラー編」
+
+Pictweetのtweets_controller.rbのテストコードを作成していきます。
+コントローラーのテストでは主に「アクション内で定義するインスタンス変数の値が期待したものになるか」「アクションが呼ばれたあと、期待したビューが表示されるか」の2点を確かめます。
+そのためには擬似的なリクエストをする処理や、インスタンス変数の値を確かめるためのエクスペクテーションの記法を知る必要があります。
+
+
+<a name="controller_test"></a>
+## コントローラーのテストを書く
+
+コントローラーのテストとは、コントローラー内のメソッドであるアクションが呼ばれた際の挙動をチェックするものになります。
+1つのアクションにつき、以下の2点を確かめます。
+
+1. アクション内で定義されているインスタンス変数の値が期待したものになるか
+2. アクションの持つビューに正しく遷移するか
+
+つまり、ひとつのアクションに対して2つ以上のexample(`it '' do ~ end`)が必要です。基本的には以下のような流れでコードを書きます。
+
+*コントローラーのテストの流れ:*
+```ruby
+describe ◯◯Controller do
+  describe 'HTTPメソッド名 #アクション名' do
+    it "インスタンス変数は期待した値になるか？" do
+    "擬似的にリクエストを行ったことにするコードを書く"
+      "エクスペクテーションを書く"
+    end
+
+    it "期待するビューに遷移するか？" do
+      "擬似的にリクエストを行ったことにするコードを書く"
+      "エクスペクテーションを書く"
+    end
+  end
+```
+
+
+各アクションはそれぞれリクエストされる際のhttpメソッドが違いますが、それぞれ少しずつテストの書き方が異なります。ここでは、Railsに定められている7つのアクションのうちhttpメソッドがgetであるアクションに関してのテストコードの書き方を学びましょう。
+
+### 事前準備
+
+> Pictweetの元のコードを編集
+
+各アクションが呼ばれる際にbefore_actionで発動する「ログインしていなかった場合にリダイレクトするメソッド」が呼ばれないよう、before_actionの行をコメントアウトしておきましょう。
+
+*app/controllers/tweets_controller.rb:*
+```ruby
+#3行目付近の以下のような行をコメントアウト
+  # before_action :move_to_index, except: [:index]
+```
+
+
+> Pictweetのディレクトリに、spec/controllers/を作成
+
+`spec/controllers`の直下に`tweets_controller.rb`のテストコードを書いていくファイル`tweets_controller_spec.rb`を作成しましょう。
+
+*tweets_controller_spec.rb:*
+```ruby
+require 'rails_helper'
+
+describe TweetsController do
+
+end
+```
+
+> コードが正常に動作するか確認
+```sh
+$ bundle exec rspec spec/controllers/tweets_controller_spec.rb
+
+No examples found.
+
+Finished in 0.00038 seconds (files took 3.23 seconds to load)
+0 examples, 0 failures
+```
+
+
+### httpメソッドがgetで呼ばれるアクションのテストコードを書こう
+7つのアクションの中でも比較的簡単にテストコードを書くことができる「httpメソッドがget」であるアクションのテストコードを書いていきましょう。
+これは「index, new, edit, show」の4種類がありますが、Pictweetにおいてはnewアクションが最も単純なアクションです。
+中身が何もないため、テストすべきことは「newアクションが動いたあとnew.html.erbに遷移するか」のみです。そこで、今回はまずnewアクションのテストコードから記述します。
+
+### 1.newアクションのテストコード
+> newアクション用のテストコードのグループを作成
+
+*tweets_controller_spec.rb:*
+```ruby
+require 'rails_helper'
+
+describe TweetsController do
+  describe 'GET #new' do
+    it "renders the :new template" do
+    end
+  end
+
+end
+```
+コントローラーのアクションもメソッドなので、名前の頭に#をつけるのは変わりません。違うのは、その前にhttpメソッド名を大文字で書き加えている点です。
+
+また、it と do の間のメッセージは、今回テストしたい内容を書いています。
+
+こちらのグループの中身に、以下のような流れでテストコードを書きます。
+
+* まず、擬似的にnewアクションを動かすリクエストを行うコードを書く
+* 次に、new.html.erbに遷移することを確かめるコードを書く
+
+
+**getメソッド**
+
+各httpメソッドには、それぞれ対応するメソッド（get, post, delete, patch）が存在します。引数として、利用したいコントローラーのアクションをシンボル型で渡します。必要なパラメーターが存在する場合は、各パラメーターをハッシュ形式で渡します。
+
+> 擬似的にnewアクションを動かすリクエストを行うコードを書く
+
+*tweets_controller_spec.rb:*
+```ruby
+require 'rails_helper'
+
+describe TweetsController do
+
+  describe 'GET #new' do
+    it "renders the :new template" do
+      get :new
+
+    end
+  end
+
+end
+```
+
+
+> new.html.erbに遷移することを確かめるコードを書く
+
+*tweets_controller_spec.rb:*
+```ruby
+require 'rails_helper'
+
+describe TweetsController do
+
+  describe 'GET #new' do
+    it "renders the :new template" do
+      get :new
+      expect(response).to render_template :new
+    end
+  end
+end
+```
+
+
+**response**
+
+example内でリクエストが行われた後の遷移先のビューの情報を持つインスタンスです。
+
+**render_templateマッチャ**
+
+引数にシンボル型でアクション名を取ります。引数で指定したアクションがリクエストされた時に自動的に遷移するビューを返します。
+
+> newアクションのテストコードをチェック
+```sh
+$ bundle exec rspec spec/controllers/tweets_controller_spec.rb
+
+TweetsController
+  GET #new
+    renders the :new template
+
+Finished in 0.03284 seconds (files took 3.18 seconds to load)
+1 example, 0 failures
+```
+
+
+### 2.editアクションのテストコード
+
+> tweets_controller_spec.rb
+```ruby
+#省略
+  describe 'GET #edit' do
+    it "assigns the requested contact to @tweet" do
+    end
+
+    it "renders the :edit template" do
+    end
+  end
+#省略
+```
+
+あらかじめ、2つのexampleを作成しました。まずは、上の方の「インスタンス変数の値を確かめる」テストコードを書きます。
+
+さて、editアクションが何をしているのかを考えると、まずはtweetsテーブルにレコードが入っていなければいけません。そこで、このexampleの中でtweetsテーブルにレコードを保存します。そのためには、前章で学習したfactory_girlを利用します。
+
+> exampleの中でtweetsテーブルにレコードを保存
+
+*spec/factories/tweets.rb:*
+```ruby
+FactoryGirl.define do
+  factory :tweet do
+    text "hello!"
+    image "hoge.png"
+    user_id 1
+  end
+end
+```
+
+> tweets_controller_spec.rb
+```ruby
+#省略
+  describe 'GET #edit' do
+    it "assigns the requested contact to @tweet" do
+      tweet = create(:tweet)
+      get :edit, id: tweet
+    end
+
+    it "renders the :edit template" do
+    end
+  end
+#省略
+```
+
+**assignsメソッド**
+
+コントローラーのテスト時、アクションで定義しているインスタンス変数をテストするためのメソッドです。
+引数に、直前でリクエストしたアクション内で定義されているインスタンス変数をシンボル型で取ります。
+
+> tweets_controller_spec.rb
+```ruby
+#省略
+  describe 'GET #edit' do
+    it "assigns the requested contact to @tweet" do
+      tweet = create(:tweet)
+      get :edit, id: tweet
+      expect(assigns(:tweet)).to eq tweet
+    end
+
+    it "renders the :edit template" do
+      tweet = create(tweet)
+      get :edit, id: tweet
+      expect(response).to render_template :edit
+    end
+  end
+#省略
+```
+
+
+### indexアクションのテストコード
+indexアクションに関してのポイントは、indexアクションで定義している@tweetsは配列の形で取得されてくるということです。
+
+**create_list**
+
+factory_girlの設定ファイルに存在しているリソースを複数作成したい場合に以下のように利用できます。
+
+*create_listの例:*
+```ruby
+hoges = create_list(:hoge, 3)
+```
+第一引数に作成したいリソースをシンボル型で、第二引数に作成したい個数を数字で渡します。
+上記の式では、hogeというリソースを3つ作成しレコードに保存しています。
+
+** matchマッチャ**
+
+引数に配列クラスのインスタンスをとり、expectの引数と比較するマッチャです。配列の中身の順番までチェックします。
+
+**Faker**
+
+emailや電話番号、名前などのダミーデータを作成するためのGemです。インストール後、factory_girlの設定ファイルの中でFakerのメソッドを利用し、ダミーデータを生成します。
+
+> Gemfile:追加
+```ruby
+group :test do
+  gem 'faker'
+end
+```
+
+【例】Fakerダミーデータの生成方法
+```sh
+{ Faker::Internet.email }
+=> "rodrick.wyman@rosenbaum.org"
+```
+
+
+> tweets.rb
+```ruby
+FactoryGirl.define do
+  factory :tweet do
+    text "hello!"
+    image "hoge.png"
+    user_id 1
+    created_at { Faker::Time.between(2.days.ago, Time.now, :all) }
+  end
+end
+```
+
+> tweets_controller_spec.rb
+```ruby
+  describe 'GET #index' do
+    it "populates an array of tweets ordered by created_at DESC" do
+      tweets = create_list(:tweet, 3)
+      get :index
+      expect(assigns(:tweets)).to match(tweets.sort{|a, b| b.created_at <=> a.created_at })
+    end
+
+    it "renders the :index template" do
+      get :index
+      expect(response).to render_template :index
+    end
+  end
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
