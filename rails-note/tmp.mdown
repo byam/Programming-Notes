@@ -1,0 +1,118 @@
+<a name="functions"></a>
+# 6章 機能を充実させる](#functions)
+
+
+<a name="functions_pagination"></a>
+## ページネーションを実装しよう
+
+今の仕様だと質問と回答が増えるたびにページが伸びて、下までスクロールしないと前の質問と回答が見れないので、ユーザーにストレスを与えてしまいます。そこで複数のページに分割して各ページへのリンクを並べアクセスしやすくしたいと思います。
+
+ページネーションを実装するには、PicTweetでも使ったgemのkaminariを利用します。
+kaminariは第1章でGemfileに記述したので既にインストールが完了しています。
+
+
+### 1ページあたりに表示する件数を指定する
+1ページに表示される質問と回答の情報を5件にします。コントローラーからビューに送る質問と回答の情報も5件のみになります。
+
+/app/controller/top_controller.rb
+```ruby
+class TopController < ApplicationController
+  def index
+    @question = Question.new
+    @feed_contents = current_user.group.feed_contents.includes(:content).page(params[:page]).per(5)
+    @feed_contents_resource = @feed_contents.map(&:content)
+  end
+end
+```
+
+
+### ページネーションのリンクを表示させる
+
+ページネーションを実装する際にはコントローラーだけでなくビューにも編集を加える必要があります。
+
+/app/views/top/index.html.erb
+```html
+  <%= render @feed_contents_resource %>
+
+  <%= paginate(@feed_contents) %>
+```
+
+
+<a name="functions_answers"></a>
+## 質問に答えた人だけが回答を見えるようにする
+今の仕様だと質問に答えていなくても、その質問に対する他の人の回答を見ることができます。なので、その質問に答えた人だけが回答を見れるようにして、より投稿したくなるようにしましょう。
+
+### 質問に答えていない場合の文言をビューに追加する
+回答が見えるかどうかを変更したいので、編集するのはビューファイルです。
+
+もし現在のユーザーがその質問に答えている場合は、その質問に対する回答を表示する。
+現在のユーザがその質問に答えていない（それ以外）場合は、「※質問に答えると他の人の回答を見ることが出来ます」と表示させます。このような条件分岐にはif文をつかいますね。
+
+/app/views/questions/show.html.erb
+```html
+    <% if @question.answers.present? %>
+      <h3><span>A</span>この質問への回答</h3>
+      <% if @question.answered?(current_user) %>
+        <%= render partial: "questions/answer", collection: @answers %>
+      <% else %>
+        <h1>※質問に答えると他の人の回答を見ることが出来ます</h1>
+      <% end %>
+    <% end %>
+```
+
+/app/models/question.rb
+```ruby
+    def answered?(user)
+      # レシーバである質問に、現在ログインしているユーザーが既に回答している場合はtrueを、回答していない場合はfalseを返す
+      answers.exists?(user_id: user.id)
+    end
+```
+
+
+
+
+
+
+
+
+<a name="functions_titile"></a>
+## ページに応じてタイトルを切り替える
+ここまででアプリはほぼ完成です。ですがどのページも「Profy」という同じタイトルになっているので、ページごとにタイトルを切り替えたいと思います。
+タイトルはブラウザのツールバーに表示され、またお気に入り(ブックマーク)に登録された際や、検索エンジンの検索結果などにも表示されます。
+
+
+
+### レイアウトファイルにタイトルのコンテンツを設定する
+
+* **provideメソッド**
+
+provideメソッドはレイアウトファイルの内容をyieldで読み込みビューファイルによって上書きすることができます。例えば、ページ固有のタイトルなどを表示させたい時などに使用します。
+個々のビューファイルでprovide :title, "個別タイトル"のように記述すればページ固有のタイトルを設定することができます。
+
+/app/views/layouts/application.html.erb
+```html
+    <title>Profy<%= yield :title %></title>
+```
+
+
+### 個々のビューファイルに固有のタイトルを設定する
+
+個々のビューファイルでprovideメソッドを使用して、タイトルの表示を設定します。Profyには複数のページが存在しますが、ここでは
+マイページ、グループページ、プロフィール編集ページ、グループ情報編集ページの4つのページにそれぞれのタイトルを設定しましょう。
+
+ページ | タイトル
+- | -
+マイページ |  Profy｜田中 太郎さん
+グループページ |Profy｜techcamp
+プロフィール編集ページ |Profy｜プロフィール編集
+グループ情報編集ページ |Profy｜グループ情報編集
+
+
+
+
+
+
+
+
+
+

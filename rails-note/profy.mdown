@@ -22,8 +22,13 @@
 各ユーザーのプロフィールを表示するページ、同じグループのメンバーを表示するページを開発していきます
 
 * [4章 タイムラインをつくろう1](#timeline1)
->
-Profyのメイン機能であるタイムラインを実装していきます。
+> Profyのメイン機能であるタイムラインを実装していきます。
+    * [質問のタイムラインを作る](#timeline1_question)
+    * [質問に回答できるようにする](#timeline1_answer)
+    * [一問一答形式にする](#timeline1_1vs1)
+    * [回答を閲覧できるようにする](#timeline1_anser_view)
+    * [マイページから回答を編集できるようにする](#timeline1_answer_mypage)
+
 
 * [5章 タイムラインをつくろう2](#timeline2)
 >
@@ -33,6 +38,9 @@ Profyのメイン機能であるタイムラインを実装していきます。
 >
 Profyに機能を加え、アプリケーションの利便性をアップさせます。
 
+    * [ページネーションを実装しよう](#functions_pagination)
+    * [質問に答えた人だけが回答を見えるようにする](#functions_answers)
+    * [ページに応じてタイトルを切り替える](#functions_titile)
 
 <a name="create_rails"></a>
 # 1章 はじめに
@@ -848,6 +856,1806 @@ class User < ActiveRecord::Base
   end
 end
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<a name="page"></a>
+# 3章 ユーザーページ、グループページをつくろう
+
+
+<a name="page_user"></a>
+## ユーザーページをつくろう
+
+新たにページを作成するときは次の4ステップが必要となります。
+
+1. ルーティングを設定する
+2. コントローラーをつくる
+3. ビューをつくる
+4. 作成したページへのリンクを設定する
+
+
+---
+### 1. ユーザーページへのルーティングを設定する
+
+
+**resourcesメソッド**
+>resourcesメソッドに対象となるリソース名を指定した1行をルーティングとして記述するだけで、Railsのリソースの7つのアクションで記載した7つのアクション名に対してのルーティングが自動的に設定されます。
+
+【例】*config/routes.rb:*
+```ruby
+ Rails.application.routes.draw do
+  resources :books
+```
+
+また、controllerでbefore_actionの編集をする際に、exceptやonlyオプションを組み合わせると特定のアクションを指定することができることと同様に、ルーティングでresourcesメソッドを編集する際にはルーティングを特定することができます。
+
+
+> users_controllerのshowアクションのルーティングを設定
+```ruby
+  resources :users, only: [:show]
+```
+
+
+> `$ rake routes`で確認すると
+```sh
+      user GET    /users/:id(.:format)              users#show
+```
+
+
+
+railsの処理の流れは必ずルーティング→コントローラー→ビューの順番となります。
+
+
+---
+### 2.ユーザーページへのコントローラーをつくる
+
+> 通常コントローラー名はusersのように複数形にします。
+```sh
+$ bundle exec rails g controller users
+```
+
+---
+
+### 3. ユーザーページのビューを生成する
+
+> 任意のユーザーのインスタンスをusersテーブルから取得
+
+*app/controller/users_controller.rb:*
+```ruby
+class UsersController < ApplicationController
+    def show
+        @user = User.find(params[:id])
+    end
+end
+```
+
+
+> app/views/users/以下にshow.html.erbを作成
+```html
+<%= @user.email %>のユーザーページです。
+```
+
+---
+
+### 4. ユーザーページへのリンクを設定する
+
+> app/views/common/_header.html.erbを以下のように編集
+```html
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">アカウント <span class="caret"></span></a>
+  <ul class="dropdown-menu" role="menu">
+    <li><%= link_to "マイページ", user_path(current_user) %></li>
+    <li><%= link_to "ログアウト", destroy_user_session_path, method: :delete %></li>
+  </ul>
+</li>
+```
+
+
+`user_path`はresourcesでルーティングを生成したときに自動で生成されるヘルパーメソッドです。
+引数にidを指定すると自動でパスに変換されます。
+
+例
+```sh
+  user_path(10) # => 'users/10'に変換される
+```
+
+
+
+<a name="page_user_up"></a>
+## ユーザーページを充実させる
+
+### ユーザーページの項目に姓名を追加
+
+> カラムを追加するにはマイグレーションファイルを追加
+```sh
+$ rails g migration AddColumnToUsers
+```
+
+> db/migrate/201xxxxxxxxx_add_column_to_users.rb
+```ruby
+class AddColumnToUsers < ActiveRecord::Migration
+  def change
+    add_column :users, :family_name, :string
+    add_column :users, :first_name, :string
+    add_column :users, :family_name_kana, :string
+    add_column :users, :first_name_kana, :string
+  end
+end
+```
+
+```sh
+$ bundle exec rake db:migrate
+```
+
+
+SeaquelProからログイン中のあなたのアカウントのfamily_name、first_name、family_name_kana、first_name_kanaを入力する。
+
+
+> app/views/users/show.html.erb
+```html
+<div class="row form user_profile">
+  <div class="col-lg-12">
+    <h2><%= "#{@user.family_name}#{@user.first_name}" %><span><%= "#{@user.family_name_kana}#{@user.first_name_kana}" %></span></h2>
+  </div>
+</div>
+```
+
+
+ユーザーの姓名、姓名カナを文字列連結してフルネームにしています。ただこの書き方ですと、文字列連結する分、コードが長くなってしまいますし、@userと何度もかくのは無駄に思えます。@userはUserモデルのインスタンスです。ユーザーのフルネームを返すインスタンスメソッドを作ってスッキリさせてしまいましょう。
+
+
+>app/models/user.rb
+```ruby
+class User < ActiveRecord::Base
+  # 省略
+  # 以下を追記
+
+  def name
+    "#{family_name} #{first_name}"
+  end
+
+  def name_kana
+    "#{family_name_kana} #{first_name_kana}"
+  end
+
+  # 省略
+end
+```
+
+
+
+
+> app/views/users/show.html.erb
+```html
+<div class="row form user_profile">
+  <div class="col-lg-12">
+    <h2><%= @user.name %><span><%= @user.name_kana %></span></h2>
+  </div>
+</div>
+```
+
+
+---
+
+### ユーザーページを編集できるようにしよう
+
+
+> 1.ルーティングを設定する `config/routes.rb`
+```ruby
+  resources :users, only: [:show, :edit, :update]
+```
+
+新たにeditとupdateの２つを追加しました。editは更新ページ、updateは実際の更新処理を意味しています。
+
+
+```sh
+$ rake routes
+ edit_user GET    /users/:id/edit(.:format)         users#edit
+      user GET    /users/:id(.:format)              users#show
+           PATCH  /users/:id(.:format)              users#update
+           PUT    /users/:id(.:format)              users#update
+```
+
+**PATCHとPUT**
+PATCHとPUTはHTTPメソッド名が違うだけで役割は同じです。rails3まではPUTでしたが、rails4からPATCHに移行しました。
+そのため:updateを指定した場合、両方のパターンのルーティングが生成されるようになっています。
+
+> 2.コントローラーを編集 `app/controllers/users_controller.rb`
+```ruby
+class UsersController < ApplicationController
+  def show
+    @user = User.find(params[:id])
+  end
+
+  def edit
+  end
+
+  def update
+  end
+end
+```
+
+```sh
+$ touch app/views/users/edit.html.erb
+```
+
+
+**form_for**
+
+form_forは、特定のモデルを編集・追加するためのフォームを生成するヘルパーメソッドです。
+特定のテーブルにレコードだけを新規作成、更新するときに利用します。
+```html
+<%= form_for(モデルクラスのインスタンス) do |f| %>
+…
+<% end %>
+```
+form_for内で使うメソッドは、`f.htmlタグ名 :カラム名`の形で指定します。
+
+例えば、以下のヘルパーメソッドを見てください。
+```html
+<%= f.text_field :name %>
+```
+こちらは、次のようなhtmlに変換されます。
+```html
+<input id="モデル名_name" name="モデル名[name]" type="text" size="モデルで設定したsize" type="text">
+```
+
+form_for内におけるメソッドはformに使用するhtmlタグの数だけあります。
+
+メソッド | 用途
+- | -
+f.label |labelのlabelタグを表示
+f.text_field | textのinputタグを表示
+f.date_select |モデルで設定したフィールドをselectタグで選べるようにして表示
+f.check_box |checkboxのinputタグを表示
+f.submit | submitのinputタグを表示
+
+form_forに似たヘルパーメソッドとして、モデルとは関係のないフォームを生成するform_tagがあります。
+
+**form_forとform_tag**
+
+form_for と form_tag どちらを使うべきかは、基本的にモデルの有無で判断します。入力フォームで入力するデータのモデルがあれば form_for を使い、入力するデータが特にモデルを持っていなければ form_tag を使います。
+
+
+> app/views/users/edit.html.erb
+```html
+
+```
+
+> app/controllers/users_controller.rb
+```ruby
+class UsersController < ApplicationController
+    def show
+        @user = User.find(params[:id])
+    end
+
+    def edit
+    end
+
+    def update
+        current_user.update(update_paramse)
+    end
+
+    private
+    def update_params
+        params.require(:user).permit(:family_name, :first_name, :family_name_kana, :first_name_kana)
+    end
+end
+```
+
+
+> app/views/users/update.html.erb
+```ruby
+<div class="row form">
+  <div class="col-lg-12">
+    <h3>プロフィールの編集が完了しました。</h3>
+    <%= link_to "ホームに戻る", root_path %>
+  </div>
+</div>
+```
+
+
+
+### ユーザーページに画像を設定できるようにしよう
+
+> paperclipを使用できるように、設定する
+```sh
+$ bundle exec rails g paperclip user avatar
+
+$ bundle exec rake db:migrate
+```
+
+> /app/model/user.rb
+```ruby
+class User < ActiveRecord::Base
+  # Include default devise modules. Others available are:
+  # :confirmable, :lockable, :timeoutable and :omniauthable
+  devise :database_authenticatable, :registerable,
+         :recoverable, :rememberable, :trackable, :validatable, :confirmable
+  # 以下を追記
+  has_attached_file :avatar, styles: { medium: "300x300>", thumb: "100x100>"}
+  validates_attachment_content_type :avatar, content_type: ["image/jpg","image/jpeg","image/png"]
+
+  # 省略
+```
+
+
+> view を編集
+```html
+# show.html
+    <div class="image" style="background-image: url(<%= @user.avatar.url(:medium) %>);"></div>
+
+
+# edit.html
+
+      <h2>プロフィール画像</h2>
+      <div class="form-group file">
+        <%= f.file_field :avatar, class: "form-control floating-label", placeholder: "画像アップロード" %>
+      </div>
+
+```
+
+
+
+### 新規登録後、必ずプロフィールを登録してもらうようにする。
+
+まだプロフィールを登録していない時に、トップページに登録を促す表示を出すようにしましょう。
+
+> app/views/top/index.html.erb
+```html
+<% unless current_user.full_profile? %>
+  <header class="header_top panel panel-default col-lg-12 no-profile">
+    <h2>まずは、あなたの基本プロフィールを登録しましょう！</h2>
+    <p>Profyは友達の質問に答えながらプロフィールを作るサービスです！</p>
+    <%= link_to "プロフィールを登録する", edit_user_path(current_user), { class: "btn btn-lg btn-primary withripple" } %>
+  </header>
+<% else %>
+
+<% end %>
+```
+
+> app/model/user.rb
+```ruby
+  def full_profile?
+    # 姓名、姓名カナ、画像が設定されていないとfalseを返す
+    avatar? && family_name? && first_name? && family_name_kana? && first_name_kana?
+  end
+```
+
+`カラム名 + ?`と書くと、指定したカラムに値が存在しないときにfalseを返すというActiverecordの機能を利用
+
+
+
+
+
+
+
+
+
+
+
+
+
+<a name="group_page"></a>
+## グループページをつくろう
+
+profyはチャットサービスのSlackのように新規登録時に、所属グループが決まっています。
+グループページには、同じグループのメンバーが表示されます。
+
+### ヘッダーにグループページへのリンクを設定しよう
+
+> config/routes.rb
+```ruby
+  resources :groups, only: [:show, :edit, :update]
+```
+
+
+> app/views/common/_header.html.erb
+```html
+    <li class="dropdown">
+      <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">グループ <span class="caret"></span></a>
+      <ul class="dropdown-menu" role="menu">
+        <li><%= link_to current_user.group.key, group_path(current_user.group) %></li>
+      </ul>
+    </li>
+```
+
+
+
+
+### グループページを作成しよう
+
+
+```sh
+$ rails g controller groups
+```
+
+app/controller/groups_controller.rb
+```ruby
+class GroupsController < ApplicationController
+
+  def show
+    @group = Group.find(params[:id])
+  end
+end
+```
+
+
+```html
+<div class="row form">
+  <div class="col-lg-12">
+    <h3><%= @group.key %>
+      <small class="edit">
+        <%= link_to "編集", edit_group_path(@group) %>
+      </small>
+    </h3>
+    <p><%= @group.detail.blank? ? "このグループの説明はありません" : @group.detail %></p>
+    <div class="group_action panel panel-default"></div>
+     <h3>Member List</h3>
+    <div class="list-group">
+    <% @group.users.each do |user| %>
+      <div class="list-group-item"><%= link_to user.name, user_path(user) %><hr></div>
+    <% end %>
+    </div>
+  </div>
+</div>
+```
+
+
+
+
+### グループページを編集できるようにしよう
+
+> app/controllers/groups_controller.rb
+```ruby
+class GroupsController < ApplicationController
+
+  def show
+    @group = Group.find(params[:id])
+  end
+
+  def edit
+    @group = Group.find(params[:id])
+  end
+
+  def update
+    @group = Group.find(params[:id])
+    @group.update(update_params)
+  end
+
+  private
+  def update_params
+    params.require(:group).permit(:key, :detail)
+  end
+end
+```
+
+
+> app/views/groups以下にedit.html.erbとupdate.html.erb
+```html
+<div class="row form">
+  <div class="col-lg-12">
+    <%= form_for @group do |f| %>
+      <h3>グループ情報を編集する</h3>
+      <div class="form-group">
+        <%= f.label :key, :Name, class: "control-label" %>
+        <%= f.text_field :key, placeholder: "グループ名を入力して下さい", class: "form-control" %>
+      </div>
+      <div class="form-group">
+        <%= f.label :detail, :Detail, class: "control-label" %>
+        <%= f.text_area :detail, placeholder: "グループ概要を入力してください", size: "30x10", class: "form-control" %>
+      </div>
+      <%= f.submit "送信", class: "btn btn-primary withripple" %>
+    <% end %>
+  </div>
+</div>
+```
+
+
+> app/views/groups/update.html.erb
+```html
+<div class="row form">
+  <div class="col-lg-12">
+    <h3>グループの編集が完了しました。</h3>
+    <%= link_to "一覧に戻る", group_path(@group) %>
+  </div>
+</div>
+```
+
+
+
+
+
+
+
+
+
+<a name="timeline1"></a>
+# 4章 タイムラインをつくろう1
+
+<a name="timeline1_question"></a>
+## 質問のタイムラインを作る
+
+### 質問用のモデルを生成し、アソシエーションをそれぞれ定義する
+
+質問は、「本文」に加えて「どのグループ」で「誰が」投稿したのかという情報を保存する必要があります。
+そのためgroup_idとuser_idをカラムに加えます。
+
+カラム名 | 型
+- | -
+text | Text
+user_id | Integer
+group_id | Integer
+
+これからアソシエーションを以下の図のように設定していきます。
+![](https://tech-master.s3.amazonaws.com/uploads/curriculums/images/Rails3-4/association-image.png)
+アソシエーション
+
+
+> create question model
+```sh
+$ bundle exec rails g model question
+```
+
+```ruby
+class CreateQuestions < ActiveRecord::Migration
+  def change
+    create_table :questions do |t|
+        t.integer :user_id
+        t.text :text
+        t.integer :group_id
+
+        t.timestamps null: false
+    end
+  end
+end
+```
+
+question.rb
+```ruby
+class Question < ActiveRecord::Base
+    belongs_to :user
+    belongs_to :group
+end
+```
+
+
+* **lambda**
+
+今回modelで指定したorderオプションは -> という lambda(ラムダ)記法 で指定されています。lambdaは匿名関数のことを指し、アソシエーションでオプション指定をする際に用います。
+
+
+```ruby
+  # user, group:
+  has_many :questions, ->{ order("created_at DESC") }
+
+  # question:
+  belongs_to :user
+  belongs_to :group
+```
+
+
+* **validates_presence_of**
+
+値が空でないかを検証します。空のまま保存したくないプロパティを指定することで、空のまま保存されることを防ぐことができます。
+
+> app/models/question.rb
+```ruby
+  validates_presence_of :user_id, :text, :group_id
+```
+
+
+### 質問を投稿できるようにする
+
+質問を実際に質問できるようにしていきましょう。今回はフォームは別ページを用意するのではなくトップページに作成していきます。
+
+> config/routes.rb
+```ruby
+  resources :questions, only: [:create]
+```
+
+> app/controllers/top_controller.rb
+```ruby
+class TopController < ApplicationController
+    def index
+        @question = Question.new
+    end
+end
+```
+
+
+> app/views/top/index.html.erb
+```html
+<% unless current_user.full_profile? %>
+  <header class="header_top panel panel-default col-lg-12 no-profile">
+    <h2>まずは、あなたの基本プロフィールを登録しましょう！</h2>
+    <p>Profyは友達の質問に答えながらプロフィールを作るサービスです！</p>
+    <%= link_to 'プロフィールを登録する', edit_user_path(current_user), {class: 'btn btn-lg btn-primary withripple' } %>
+  </header>
+<% else %>
+  <div class="posting_form top_content">
+    <header class="posting_header">
+      <div class="posting_image icon_image" style="background-image: url(<%= current_user.avatar.url(:medium) %>);"></div>
+      <div class="posting_user_info user_info">
+        <%= current_user.name %>
+      </div>
+    </header>
+    <%= form_for(@question) do |f| %>
+      <%= f.text_field :text, placeholder: "例：好きな食べ物は？" %>
+      <%= f.submit "質問する" %>
+    <% end %>
+  </div>
+<% end %>
+```
+
+
+> uestionsコントローラーを作成
+
+```sh
+$ rails g controller questions
+```
+
+* **mergeメソッド**
+
+mergeメソッドは２つのハッシュを統合する時に使います。
+
+```ruby
+hash1 = {question: "Who is your favorite artist?"}
+hash2 = {group: "tech_camp", name: "abe"}
+hash1.merge(hash2)
+#=> {:question=>"Who is your favorite artist?", :group=>"tech_camp", :name=>"abe"}
+```
+今までは、アクションにQuestion.create(text: create_params[:text], user_id: current_user.id, group_id: current_user.group_id)のようにハッシュのキーと値をそれぞれ書いてい
+ました。今回はmergeメソッドを使うことによって、ストロングパラメーター(create_params)が生成される際にuser_idとgroup_idのキーと値を持つハッシュを追加することができます。
+
+> app/controllers/questions_controller.rb
+```ruby
+class QuestionsController < ApplicationController
+  def create
+    Question.create(create_params)
+    redirect_to :root and return
+  end
+
+  private
+  def create_params
+    params.require(:question).permit(:text).merge(user_id: current_user.id, group_id: current_user.group_id)
+  end
+end
+```
+
+`redirect_to :root`を書くだけではアクション内の処理は終了せず次の行のコードを実行していってしまいます。
+今回のケースでは下に続く処理がないので問題ないのですが、慣習的につけるようにするのがベターです。
+
+
+### 質問をタイムラインに表示する
+
+> app/controllers/top_controller.rb
+```ruby
+class TopController < ApplicationController
+    def index
+        @question = Question.new
+        @questions = current_user.group.questions
+    end
+end
+```
+
+
+> app/views/top/index.html.erb
+```html
+    </header>
+    <%= form_for(@question) do |f| %>
+      <%= f.text_field :text, placeholder: "例：好きな食べ物は？" %>
+      <%= f.submit "質問する" %>
+    <% end %>
+  </div>
+
+  <%= render partial: "questions/question", collection: @questions %>
+<% end %>
+```
+
+`<%= render partial: "questions/question", collection: @questions %>`で部分テンプレートを利用しています。
+renderメソッドでこのように指定するとアンダーバーをつけて単数形にしたファイルが部分テンプレートとして読まれる
+
+> app/views/questions/_question.html.erb
+```html
+<div class="question_content top_content">
+  <header class="question_header">
+    <div class="question_image icon_image" style="background-image: url(<%= question.user.avatar.url(:medium) %>);"></div>
+    <div class="question_user_info user_info">
+      <span><%= link_to question.user.name, user_path(question.user) %></span>
+      <time><%= time_ago_in_words question.created_at %></time>
+    </div>
+  </header>
+  <div class="question_body">
+    <div class="question_box">
+      <span class="q">Q</span>
+      <span class="question_text"><%= question.text %></span>
+    </div>
+  </div>
+</div>
+```
+
+
+* ** time_ago_in_words**
+
+投稿時間を「○○時間前」のようにしたい場合に利用するビューヘルパーメソッドです。
+特にgemを追加する必要なく利用することができます。デフォルトだと英語なのでrailsの環境設定を日本語で表示したい場合は、`config/application.rb`の言語設定を日本語`（config.i18n.default_locale = :ja）`にしておく必要があります。また、日本語の文言表示のために`config/locales`以下に`ja.yml`を配置しておきましょう。
+
+
+
+
+<a name="timeline1_answer"></a>
+## 質問に回答できるようにする
+
+### 回答用のモデルを生成する
+
+回答は、「本文」に加えて「どの質問」に対して「誰が」投稿したのかという情報を保存する必要があります。
+そのためuser_idとquestion_idとをカラムに加えます。どのグループで投稿したのかという情報はリレーション先のquestionsテーブルに保存されているためanswersテーブルには必要はありません。
+
+カラム名 | 型
+- | -
+question_id | Integer
+user_id | Integer
+text | Text
+
+```ruby
+class CreateAnswers < ActiveRecord::Migration
+  def change
+    create_table :answers do |t|
+        t.integer :question_id
+        t.integer :user_id
+        t.text :text
+        t.timestamps null: false
+    end
+  end
+end
+```
+
+
+
+```ruby
+# question.rb
+    has_many :answers
+
+# user.rb
+    has_many :answers, ->{ order("updated_at DESC") }
+
+# answer.rb
+    belongs_to :user
+    belongs_to :question
+```
+
+
+
+### 質問に回答ボタンをつける
+
+```ruby
+# routes.rb
+  resources :answers, only: [:new, :create]
+```
+
+app/views/questions/_question.html.erb
+```html
+      <span class="question_text"><%= question.text %></span>
+    </div>
+    <div class="questioned">
+      <span>回答<%= question.answers.count %>件</span>
+    </div>
+    <%= form_tag(new_answer_path, method: :get, class: "question_submit") do %>
+      <%= hidden_field_tag(:question_id, question.id) %>
+      <%= submit_tag("回答する") %>
+    <% end %>
+  </div>
+```
+
+
+* **hidden_field_tag**
+
+hidden_field_tag は、ユーザーが入力する必要の無い自明のデータをパラメーターとして送信したい時に利用します。
+
+上記では、:question_id というキーに対して個別のquestionのidを値として設定しています。
+このことにより、パラメーターが送られた先では、params[:question_id] とするだけで簡単に対応する質問のidを取得することができます。
+
+
+
+### 回答ページを作成する
+
+controller
+```sh
+$ rails g controller answers
+```
+
+app/controllers/answers_controller.rb
+```ruby
+class AnswersController < ApplicationController
+
+  def new
+    @question = Question.find(params[:question_id])
+    @answer = Answer.new
+    @answer.question_id = @question.id
+  end
+
+end
+```
+
+
+app/views/answers/new.html.erb
+```html
+<div class="row form">
+  <div class="col-lg-12">
+    <%= form_for(@answer) do |f| %>
+      <h3><span>Q</span><%= @question.text %></h3>
+      <div class="form-group">
+        <%= f.text_area :text, placeholder: "回答を入力してください", cols:"30", rows:"10", autofocus:"true", class:"form-control" %>
+      </div>
+      <%= f.hidden_field :question_id %>
+      <%= f.submit "回答する", class:"btn btn-primary withripple"%>
+    <% end %>
+  </div>
+</div>
+```
+
+
+### 回答を投稿できるようにする
+
+```ruby
+  def create
+    @answer = Answer.create(create_params)
+  end
+```
+
+
+
+
+<a name="timeline1_1vs1"></a>
+## 一問一答形式にする
+
+今のままだとProfyはひとつの質問に複数回、回答を投稿できてしまいます。最終的に目指したい形は「一問一答形式で質問と答えを出しあうサービス」です。そのためにこれから、同一の質問に二度以上回答できないよう条件分岐を指定していきます。
+
+### 未回答の質問にのみ「回答する」ボタンが表示されるようにする
+現在、質問に回答するためにはトップページにある「回答する」ボタンを押す必要があります。ひとまず、このボタンを「現在ログインしているユーザーがその質問に回答していない場合のみ表示する」という条件に変えてあげれば良さそうです。回答ボタンが表示されない条件の場合には、以下の画像のように「※回答済み※」というメッセージを表示しましょう。また、データの有無を確かめたいときに以下の様なメソッドを使用することができます。
+
+* ** exists? / present? / blank? メソッド**
+
+`.exists?` とは、Railsアプリケーションを作成した際にデフォルトで読み込まれる ActiveSupport というgemが実現しているヘルパーメソッドです。メソッドを呼び出したレシーバの中から引数として渡した条件で検索をかけ、データが存在すれば `true` を、無ければ `false` を返り値とします。
+あくまでもRubyが元々持つ機能では無いので、irb上などでは動作しないことに注意してください。
+
+似たようなメソッドとして `.present?` や `.blank?` もあります。こちらは、レシーバが空であるか否かを判別するものです。例えば、以下のように使うことができます。
+
+ちなみに、exists?/present?/blank?メソッドにおいて「空」とみなされる値は以下のとおりです。
+
+    - 値がnilまたはfalse
+    - 空白文字だけで構成された文字列
+    - 中身が空欄の配列またはハッシュオブジェクト
+
+
+> app/controllers/answers_controller.rb
+```ruby
+class AnswersController < ApplicationController
+
+  before_action :redirect, only: :new
+
+  def new
+    @question = Question.find(params[:question_id])
+    @answer = Answer.new
+    @answer.question_id = @question.id
+  end
+
+  #中略
+
+  private
+  def create_params
+    params.require(:answer).permit(:question_id, :text).merge(user_id: current_user.id)
+  end
+
+  def redirect
+    if Answer.exists?(question_id: params[:question_id], user_id: current_user.id)
+      redirect_to :root
+    end
+  end
+
+end
+```
+
+* **3行目**
+
+before_actionメソッドを使って、newアクションの際にredirectメソッドを呼び出すように実装しました。
+
+* **・18行目〜22行目**
+
+exist?メソッドを用いてユーザーが回答済みかどうかを確認し、redirect_toメソッドを使い、回答済みの場合にはホーム画面に遷移させるようにしました。
+
+これで、ユーザーは質問に一度しか回答できないようになりました。
+
+
+
+
+<a name="timeline1_anser_view"></a>
+## 回答を閲覧できるようにする
+
+せっかく回答を投稿できるようになっても閲覧できないと意味がありません。
+
+### 個別質問ページで回答を閲覧できるようにする
+
+```ruby
+# config/routes.rb
+  resources :questions, only: [:create, :show]
+
+# app/controllers/questions_controller.rb
+  def show
+    @question = Question.find(params[:id])
+    @answers = @question.answers
+  end
+```
+
+
+```html
+<!--  app/views/questions/show.html.erb -->
+<div class="row form">
+  <div class="col-lg-12">
+    <h3><span>Q</span><%= @question.text %></h3>
+    <div class="group_action panel panel-default">
+      <div class="panel-body">
+        <% unless @question.answers.exists?(user_id: current_user.id) %>
+          <%= link_to '質問に回答する', new_answer_path(question_id: @question.id) %>
+        <% else %>
+          <h4>※回答済み※</h4>
+        <% end %>
+      </div>
+    </div>
+    <% if @question.answers.present? %>
+      <h3><span>A</span>この質問への回答</h3>
+      <%= render partial: "questions/answer", collection: @answers %>
+    <% end %>
+  </div>
+</div>
+
+
+<!--  _answer.html.erb -->
+<section class="col-md-12">
+  <div class="sct_inner">
+    <p><%= link_to answer.user.name, user_path(answer.user) %>さんの回答</p>
+    <h4>→<%= answer.text %></h4>
+  </div>
+</section>
+
+
+<!-- _question.html.erb -->
+      <%= link_to "回答#{question.answers.count}件", question_path(question) %>
+
+<!-- create.html.erb -->
+    <%= link_to "他の人の回答を見る", question_path(@answer.question) %>
+
+
+```
+
+
+### ユーザーページで回答済みの質問を閲覧できるようにしよう
+ユーザーページで「そのユーザーが既に答えた質問」を閲覧できるようにしましょう。
+指定したユーザーが答えた質問を取得するにはどうしたらいいでしょうか。ステップを踏んで考えてみます。
+
+例
+```ruby
+#ユーザーが答えた回答を取得する(user_idを1とする)
+answers = Answer.where(user_id: 1)
+
+#answersのquestion_idカラムの値で配列にする
+#pluckメソッドで任意のカラムを配列として取得することが出来る
+question_ids = answers.pluck(:question_id)
+
+#ユーザーが答えた質問を重複なく取得する
+Question.find(question_ids)
+```
+
+上記のようにすれば取得することが可能ですが、ステップが多くで少しめんどうですよね。
+このAnswerを介したUserとQuestionの関係を**多対多の関係**と呼び、**has_many**に**through**オプションを指定することで、1つテーブルを経由してインスタンスを取得することができます。
+
+* **多対多の関係**
+
+『Instagram』のようにひとつの写真に複数のタグ付けができるSNSをイメージしてみましょう。
+それぞれのテーブルに保存されているレコードの関係性は以下のようになります。
+
+![](https://tech-master.s3.amazonaws.com/uploads/curriculums/images/Rails3-4/association-image.png)
+
+ひとつの写真には「東京／カフェ／おしゃれ」のように複数のタグが属しています。
+また同じ「東京」のタグに対してもたくさんの写真が投稿されるので、ひとつのタグに複数の写真が属しているとも言えます。
+このような関係を多対多の関係と呼びます。多対多の関係を表現するには、photos_tagsテーブルのような中間テーブルが必要です。
+
+中間テーブルには、「どの写真がどのタグと関連づいているか」という情報が全て記載されていることになります。
+ひとつのレコードには「photos_id × tags_id」の組み合わせがひとつ記録され、全ての写真とタグの組み合わせの数分、レコードが蓄積されていきます。10個の写真にそれぞれ3つずつタグが付いている場合、全ての関係性を表すのに中間テーブルのレコードは30個生成されるということになります。
+
+* **has_many throughオプション**
+
+has_manyのthroughオプションは、モデルに多対多の関連を定義するときに利用します。
+throughという名前のとおり、「〜を経由する」という意味です。
+
+例
+```ruby
+# app/models/photo.rb
+class Photo < ActiveRecord::Base
+  has_many :photos_tags
+  has_many :tags, through: :photos_tags
+end
+
+# app/models/tag.rb
+class Tag < ActiveRecord::Base
+  has_many :photos_tags
+  has_many :photos, through: :photos_tags
+end
+
+# app/models/photos_tag.rb
+class PhotosTag < ActiveRecord::Base
+  belongs_to :photo
+  belongs_to :tag
+end
+```
+上記のようなアソシエーションを定義することで、自動的に以下のようなメソッドが使えるようになります。
+
+
+上記のようなアソシエーションを定義することで、自動的に以下のようなメソッドが使えるようになります。
+
+[例]
+```ruby
+#通常レコードの作成
+tag1 = Tag.create(name: "東京")
+tag2 = Tag.create(name: "おしゃれ")
+photo1 = Photo.create(image: "cool_cafe.jpg", location: "桜ヶ丘")
+
+
+# 多対多関係を定義したレコードの作成
+tag1.photos.create(image: "cute_shop.jpg", location: "宇田川町")
+
+
+# リレーションの追加
+tag1.photos << photo1
+photo1.tags << tag2
+
+
+# リレーションを利用したレコードの取得
+photo1.tags
+# => #<Tag id:1, name:"東京">,#<Tag id:2, name:"おしゃれ">
+```
+
+
+* 2〜4行目
+
+ここでは単体のインスタンスを生成しています。今回使用する例は、nameプロパティを持ったtagインスタンスとimage及びlocationプロパティを持ったphotoインスタンスです。これらの間には多対多の関係が定義されています。
+
+* 8行目
+
+多対多の関係性を利用し、tag1に関係したphotoインスタンスを新たに生成しています。「 tag1.photos.create 」と、複数形になっていることに注意してください。
+
+* 12〜13行目
+
+後からインスタンス同士を関連付けることも可能です。「<<メソッド」を使用するとこのように簡単に実現することができます。
+
+12行目では、tag1と関係しているphotosの配列に、新たにPhotoクラスのインスタンスを追加することでリレーションを生成しています。
+また13行目では同様に、photo1と関係しているtagsの配列に対し、新たにtag2とのアソシエーションを追加しています。
+
+* 17行目
+
+リレーションしている要素を全て出力することもできます。上記の例だと、photo1は12・13行目でそれぞれtag1・tag2に関連付けられているので、返り値としてtag1ならびにtag2のインスタンスが出力されています。
+
+
+また、has_manyメソッドには他にも次のようなオプションを指定できます。
+
+オプション名 | 用途
+- | -
+class_name | 関連するモデルのクラス名を指定でき、関連名(photos_tags等、has_manyの直後に書くもの)と参照先のクラス名(PhotosTagのようなモデル名)を異なるものにできる。
+foreign_key |参照先を参照する外部キーの名前を指定できる（デフォルトは、参照先のモデル名_id）
+dependent| 親モデルのデータを消したら関連するモデルのデータも連動して消したいときに使用します。destroyとdelete_allでひとつひとつ消していくか、一気に消すかを指定できる
+source  |関連テーブルから先のモデルにアクセスするための(関連モデルから見た)関連名を指定できる
+
+
+
+
+
+
+> app/controllers/users_controller.rbを以下のように更新してみましょう。
+```ruby
+class UsersController < ApplicationController
+  def show
+    @user = User.find(params[:id])
+    @questions = @user.answered_questions.uniq
+  end
+```
+
+・4行目
+
+ユーザーページでユーザーの答えた質問を表示するために、@user.answered_questionsで has_many throughオプション を利用しQuestionクラスのインスタンス配列を取得しています。
+メソッド answered_questionsはこれから定義していきます。
+
+
+* **uniqメソッド**
+
+4行目末尾に使用しているuniqメソッドは、配列の中の重複する要素を取り除いた値を返してくれるメソッドです。
+
+例
+```ruby
+fruits = ["apple", "orange", "apple", "banana", "banana"]
+p fruits.uniq
+
+# =>["apple", "orange", "banana"]
+```
+
+
+```ruby
+# app/models/user.rb
+  has_many :answered_questions, through: :answers, source: :question
+
+```
+
+
+```html
+<!-- app/views/users/show.html.erb -->
+<div class='row form user_profile'>
+  <div class='col-lg-12'>
+    <div class='image' style='background-image: url(<%= @user.avatar.url(:medium) %>);'></div>
+    <h2><%= @user.name %><span><%= @user.name_kana %></span></h2>
+    <% if current_user && current_user.id == @user.id %>
+    <div class='profile_edit'>
+      <%= link_to "プロフィール編集", edit_user_path(current_user), {:class => "btn btn-primary withripple" }%>
+    </div>
+    <% end %>
+
+    <% if @questions.present? %>
+      <h3>このユーザーの回答した質問</h3>
+      <div class='clearfix'>
+        <%= render partial: 'users/question', collection: @questions %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+
+<!-- app/views/users/_question.html.erb -->
+<div class="question_content top_content">
+  <div class="question_body">
+    <div class="question_box">
+      <span class="q">Q</span>
+      <span class="question_text"><%= question.text %></span>
+    </div>
+    <div class="answer_box" style="margin-bottom: 10px;">
+      <span class="a">A</span>
+      <span class="answer_text"><%= question.user_answer(@user.id).text %></span>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+```
+
+
+
+* 9行目
+
+ここで呼び出している user_answerメソッド は、ある特定のquestionのidとuserのidを用いて、指定の質問に対するユーザーの回答をanswersテーブルから取得するメソッドです。ひとつの質問、つまりQuestionクラスのインスタンスに対して使用するため、Questionモデルにこのメソッドは定義していきます。
+
+
+> app/models/question.rb
+```ruby
+class Question < ActiveRecord::Base
+  #association
+  belongs_to :user
+  belongs_to :group
+  has_many :answers, dependent: :destroy
+
+  #validation
+  validates_presence_of :user_id, :text, :group_id
+
+  def user_answer(user_id)
+      Answer.find_by(user_id: user_id, question_id: id)
+  end
+end
+```
+
+* **find_byメソッド**
+
+user_answerメソッド内部で使用している find_byメソッド は、検索条件に該当したレコードを一件だけ取得するメソッドです。
+findメソッドがidのカラムに対してのみ検索をかけられるのに対し、 find_byメソッド は検索条件として複数のカラムを指定できるという特徴があります。
+今回の例でいうとanswersテーブルから user_idカラムの値が、引数として渡されている「現在ログインしているユーザーのid」と一致しかつ、question_idカラムの値が「メソッドを呼び出した元の質問のid」と一致する回答を検索し、取得しています。
+
+
+
+<a name="timeline1_answer_mypage"></a>
+## マイページから回答を編集できるようにする
+
+さらに機能を追加して、Profyをより良いサービスにしていきましょう。
+一度回答した答えを編集する機能を、マイページの中に実装していきます。
+目標はマイページの回答一覧から、編集ページに飛んで回答の更新ができるようになることです。
+
+
+
+
+```ruby
+# routes.rb
+  resources :answers, only: [:new, :create, :edit, :update]
+
+# answers_controller.rb
+  def edit
+    @answer = Answer.find(params[:id])
+    @question = @answer.question
+  end
+
+  def update
+    @answer = Answer.find(params[:id])
+    @question = @answer.question
+    @answer.update(update_params)
+
+  def update_params
+    params.require(:answer).permit(:text)
+  end
+```
+
+
+app/views/answers/edit.html.erb
+```html
+<div class="row form">
+  <div class="col-lg-12">
+    <%= form_for(@answer) do |f| %>
+      <h3><span>Q</span><%= @question.text %></h3>
+      <div class="form-group">
+        <%= f.text_area :text, placeholder: "回答を入力してください", cols:"30", rows:"10", autofocus:"true", class:"form-control" %>
+      </div>
+      <%= f.submit "回答する", class:"btn btn-primary withripple"%>
+    <% end %>
+  </div>
+</div>
+```
+
+app/views/answers/update.html.erb
+```html
+<div class="row form">
+  <div class="col-lg-12">
+    <h3>質問「<%= @question.text %>」への回答を編集しました。</h3>
+    <%= link_to "自分の回答を見る", user_path(current_user) %>
+    <%= link_to "ホームに戻る", root_path %>
+  </div>
+</div>
+```
+
+
+app/views/users/_question.html.erb
+```html
+      <% if @user.id == current_user.id %>
+        <small class='edit'>
+          <%= link_to '編集', edit_answer_path(question.user_answer(@user.id)) %>
+        </small>
+      <% end %>
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+<a name="timeline2"></a>
+# 5章 タイムラインをつくろう2
+
+今の仕様だと回答を見たくても、度々、個別質問ページに行かないと回答が見ることができないため
+少し面倒です。このままですと回答を見落としてしまう可能性もあります。そこで質問への回答をタイムラインにも流すようにしようと思います。
+
+## 質問と回答が時系列順で入ったインスタンス配列をつくるには？
+
+１つのテーブルからインスタンスを取得して表示:
+```ruby
+# 例えば、以下の様にすれば、そのグループの質問を取得できます。
+@questions = Question.where(group_id: 1).order(updated_at: :desc)
+```
+
+では、group_idが1のanswersのレコードを取得するにはどうしたらいいと思いますか。
+answers自体にはgroup_idカラムはありません。answersとリレーションしているquestionsのレコードがgroup_idを持っています。
+アソシエーションを利用すれば以下のような記述で特定のgroup_idのanswersのレコードを取得できます。
+```ruby
+@answers = Answer.includes(:question).where(questions:{group_id:1}).order(updated_at: :desc)
+```
+
+上２つの方法を使えば質問と回答のインスタンス配列を別々に取得することができます。
+しかし、今回やりたいことは時系列で並び変えて１つの配列にすることです。例えば以下のようにrubyのメソッドを駆使して
+２つの配列を１つにまとめ並び変えることは、できなくはないです。(以下のコード自体は理解する必要はありません)
+
+```ruby
+@questions = Question.where(group_id: 1).order(updated_at: :desc)
+@answers = Answer.includes(:question).where(questions:{group_id:1}).order(updated_at: :desc)
+@answers = @answers.to_a
+new_array = []
+@questions.each do |question|
+  tmp_answers = @answers.dup
+  tmp_answers.each do |answer|
+    if answer.updated_at > question.updated_at
+      new_array << @answers.shift unless @answers.empty?
+      #shiftメソッドは、配列の最初の要素を削除し、その要素を返します。
+    else
+      new_array << question
+      break
+    end
+    new_array << question if @answers.empty?
+  end
+end
+```
+
+しかしこの方法だとコードが長くなってしまいますし、ページネーションを実現するのが難しくなります。
+**そして、最もクリティカルな問題は質問、回答以外のインスタンスが増えたときにどんどん処理が複雑になっていくことです。**
+
+よりスマートにまとめるために、タイムライン用のテーブルを１つ用意してそこからレコード毎に質問や回答にリレーションさせるという方法があります。
+以下のようなイメージです。
+
+![](https://tech-master.s3.amazonaws.com/uploads/curriculums/images/Rails3-5/smart-timeline-image.png)
+
+
+* **ポリモーフィック関連**
+
+ポリモーフィックは、関連付けのやや高度な応用です。ある1つのモデルが他の複数のモデルに属していることを、1つのアソシエーション定義だけで表現することができます。
+
+```ruby
+class Image < ActiveRecord::Base
+  belongs_to :imageable, polymorphic: true
+end
+
+class Company < ActiveRecord::Base
+  has_many :images, as: :imageable
+end
+
+class User < ActiveRecord::Base
+  has_many :images, as: :imageable
+end
+```
+
+![](https://tech-master.s3.amazonaws.com/uploads/curriculums/images/Rails3-5/table-polymofic.png)
+
+`imageable_type`には「Company」や「User」のような所属するクラス名が、`imageable_id`にはリレーションしているインスタンスのidが格納されます。
+ポリモーフィック関連の定義により以下の様に利用することができます。
+imageableに注目してください。この名前に特に決まりはないのですが~ableとつけるのが慣例となっています。
+
+
+```ruby
+#例1:Companyモデルに帰属する複数の画像を取得する
+company = Company.find(1)
+company.images
+#=> [<Image id:1 ..>,<Image id:2 ..>]
+
+#例2:Userモデルに帰属する複数の画像を取得する
+user = User.find(1)
+user.images
+#=> [<Image id:3 ..>,<Image id:4 ..>]
+
+
+#例3:Imageモデルが帰属するインスタンスを取得する(帰属先が企業の場合)
+image = Image.find(1)
+image.imageable
+#=> <Company id:1 ..>
+
+#例4:Imageモデルが帰属するインスタンスを取得する(帰属先がユーザーの場合)
+image = Image.find(2)
+image.imageable
+#=> <User id:1 ..>
+
+
+#例5: Companyモデルに帰属するImageクラスのインスタンスを作成する
+company = Company.create
+Image.create(imageable_id: company.id,imageable_type: company.class.to_s)
+#=>  INSERT INTO `Images` (`imageable,_id`, `imageable,_type`, `created_at`, `updated_at`) VALUES (1, 'Company', '2015-0x-0x..', '2015-0x-0x..')
+
+#例6: Companyモデルに帰属するImageクラスのインスタンスを作成する
+company = Company.create
+company.images.create
+#=>  INSERT INTO `Images` (`imageable,_id`, `imageable,_type`, `created_at`, `updated_at`) VALUES (1, 'Company', '2015-0x-0x..', '2015-0x-0x..')
+
+```
+
+例5と例6は、同じ処理を意味しています。
+
+例5はcreateしたCompanyクラスのインスタンスのidとクラス名を利用して、新たにImageをcreateしています。例6はポリモーフィック関連を利用して、Imageクラスを作成しています。
+
+`company.images.create`この部分は違和感を覚えるかもしれませんが、Companyに帰属するImagesのインスタンスを1つ作成した（レコードを追加した）という意味です。
+`company.images`は複数なのに、なんでcreateが動かせるの？と疑問に思われる方もいるかもしれません。ただ、ここはポリモーフィックの文法なので覚えてしまいましょう。例5と違い、帰属するインスタンスのidやクラス名を入力しなくて良いというメリットがあります。
+
+
+
+## タイムライン用のモデルを作成する
+
+タイムライン用のモデル名はFeedContentとします。
+
+```sh
+$ rails g model feed_content
+```
+
+
+```ruby
+class CreateFeedContents < ActiveRecord::Migration
+  def change
+    create_table :feed_contents do |t|
+      t.integer :content_id
+      t.string  :content_type
+      t.integer  :group_id
+      t.timestamps
+    end
+  end
+end
+```
+
+
+
+
+```sh
+$ rake db:migrate
+```
+
+
+
+
+## モデルにポリモーフィック関連を定義する
+
+![](https://tech-master.s3.amazonaws.com/uploads/curriculums/images/Rails3-5/polymor-question-image.png)
+
+app/model/feed_content.rb
+```ruby
+  class FeedContent < ActiveRecord::Base
+    belongs_to :content, polymorphic: true
+  end
+```
+app/models/question.rb
+```ruby
+  class Question < ActiveRecord::Base
+
+    #association
+    belongs_to :user
+    belongs_to :group
+    has_many :answers, dependent: :destroy
+    has_one :feed_content, as: :content, dependent: :destroy
+```
+app/models/answer.rb
+```ruby
+  class Answer < ActiveRecord::Base
+    #association
+    belongs_to :question
+    belongs_to :user
+    has_one :feed_content, as: :content, dependent: :destroy
+```
+
+
+
+## 質問、回答の投稿時にFeedContentsも同時に追加する
+
+ポリモーフィック関連を利用するためには、質問及び回答が投稿された時にFeedContentを同時に追加する必要があります。
+
+例えば質問を投稿する場合、以下の様な実装が考えられます。
+```ruby
+class QuestionsController < ApplicationController
+  def create
+    question = Question.create(create_params)
+    question.feed_content = FeedContent.create(group_id: question.group_id, updated_at: question.updated_at)
+    redirect_to :root and return
+  end
+```
+
+この実装方法はあまり好ましくありません。なぜなら、他のコントローラーで`Question.create`を使う場合に必ず続けて`quetsion.feed_content = FeedContent.create`を記述する必要があるからです。またクラスというのは本来責任分担のために存在します。「`Question`を作成したときは必ずFeedContentを更新する」という決まりはQuestionモデルクラスが担うべきです。このような場合はモデルのコールバックを利用するといいでしょう。
+
+* **ActiveRecord コールバック**
+
+ActiveRecordコールバックとは、作成/保存/更新/削除/検証/等、特定のイベント発生時に呼び出されるメソッドのことです。
+例えば、「Userクラスのインスタンスが新規作成される前に、必ず友人招待用のランダムなコードを設定する」といったことができます。実際のコードを見ていきましょう。
+```ruby
+class User < ActiveRecord::Base
+  before_create :set_invitation_code
+
+  private
+  def set_invitation_code
+    self.invitation_code = SecureRandom.hex(2) #ランダムな英数字を生成する
+  end
+end
+
+user = User.create
+p user.invitation_code #=> "81de"
+```
+before_createは、モデルが新規作成される前に呼び出されるコールバックです。
+このコールバックを設定することによりUserを新規作成したときは、必ず招待コードが設定されます。
+コールバックは、呼び出されるタイミングの違いで非常に多くの種類があります。いま全てを覚える必要はないのでざっと目を通しておいてください。
+
+### 利用可能なコールバック
+
+オブジェクトの作成
+
+* before_validation
+* after_validation
+* before_save
+* around_save
+* before_create
+* around_create
+* after_create
+* after_save
+
+オブジェクトの更新
+
+* before_validation
+* after_validation
+* before_save
+* around_save
+* before_update
+* around_update
+* after_update
+* after_save
+
+オブジェクトのdestroy
+
+* before_destroy
+* around_destroy
+* after_destroy
+
+それでは、質問、回答の新規投稿時にもコールバックでFeedContentがcreateされるように実装していきます。
+
+app/models/question.rb
+```ruby
+  #callback
+  after_create :create_feed_content
+
+  def user_answer(user_id)
+    Answer.find_by(user_id: user_id, question_id: id)
+  end
+
+  private
+  def create_feed_content
+    self.feed_content = FeedContent.create(group_id: group_id, updated_at: updated_at)
+  end
+```
+
+app/models/answer.rb
+```ruby
+  #callback
+  after_create :create_feed_content
+
+  #validation
+  validates_presence_of :user_id, :text
+
+  private
+  def create_feed_content
+    self.feed_content = FeedContent.create(group_id: question.group_id, updated_at: updated_at)
+  end
+```
+
+
+
+## ビューにタイムラインのインスタンス配列を渡す
+
+```ruby
+# app/models/group.rb
+  has_many :feed_contents, ->{ order("updated_at DESC") }
+
+# TopController
+class TopController < ApplicationController
+    def index
+        @question = Question.new
+        feed_contents = current_user.group.feed_contents.includes(:content)
+        @feed_contents = feed_contents.map(&:content)
+    end
+end
+
+```
+
+
+## コントローラーから渡したインスタンス配列でタイムラインを表示する
+
+```html
+<!-- app/views/top/index.html.erb -->
+  <%= render @feed_contents %>
+
+<!-- app/views/answers/_answer.html.erb -->
+<div class="answer_content top_content">
+  <header class="answer_header">
+    <div class="answer_image icon_image" style="background-image: url(<%= answer.user.avatar.url(:medium) %>);"></div>
+    <div class="answer_user_info user_info">
+      <span><%= link_to answer.user.name, user_path(answer.user) %></span>
+      <time><%= time_ago_in_words answer.updated_at %></time>
+    </div>
+  </header>
+  <div class="answer_body">
+    <div class="answerd">
+      <%= answer.question.user.name %>の質問「<%= link_to answer.question.text, question_path(answer.question) %>」に回答しました。
+    </div>
+    <div class="answer_box">
+      <span class="a">A</span>
+      <span class="answer_text"><%= answer.text %></span>
+      <% if answer.user_id == current_user.id %>
+        <small class="edit">
+          <%= link_to '編集', edit_answer_path(answer) %>
+        </small>
+      <% end %>
+    </div>
+    <% if answer.question.answers.count > 1 %>
+      <div class="answer_other">
+        <%= link_to "他#{answer.question.answers.count - 1}件の回答を見る", question_path(answer.question) %>
+      </div>
+    <% end %>
+  </div>
+</div>
+```
+
+
+
+## 編集した回答もタイムラインで上に来るようにする
+現在タイムラインは、次のような流れで質問や回答が生成された順に並んでいます。
+
+1. 質問または回答が生成されたタイミングで各モデルに記載したafter_createコールバックが働く
+
+2. 働いたコールバックによりfeed_contentsテーブルにも質問または回答の情報が追加される
+
+3. feed_contentsモデルから更新日降順で取得されたデータがトップページに渡される
+
+4. 各要素がQuestionモデルかAnswerモデルのどちらに紐づくのかが判別され、対応した部分テンプレートが呼び出されタイムラインに表示される
+
+つまり、現在は質問や回答が最初に作成された順番で並んでしまい、回答に編集を加えてもタイムラインのいちばん上に出てこない状態です。
+
+
+app/models/answer.rb
+```ruby
+class Answer < ActiveRecord::Base
+  belongs_to :question
+  belongs_to :user
+  has_one :feed_content, as: :content, dependent: :destroy
+
+  ## callback
+  after_create :create_feed_content
+  after_update :update_feed_content
+
+  ## validation
+  validates_presence_of :user_id, :text
+
+  private
+  def create_feed_content
+    self.feed_content = FeedContent.create(group_id: question.group_id, updated_at: updated_at)
+  end
+
+  def update_feed_content
+    self.feed_content.update(updated_at: updated_at)
+  end
+end
+```
+
+
+
+
+
+
+
+
+<a name="functions"></a>
+# 6章 機能を充実させる](#functions)
+
+
+<a name="functions_pagination"></a>
+## ページネーションを実装しよう
+
+今の仕様だと質問と回答が増えるたびにページが伸びて、下までスクロールしないと前の質問と回答が見れないので、ユーザーにストレスを与えてしまいます。そこで複数のページに分割して各ページへのリンクを並べアクセスしやすくしたいと思います。
+
+ページネーションを実装するには、PicTweetでも使ったgemのkaminariを利用します。
+kaminariは第1章でGemfileに記述したので既にインストールが完了しています。
+
+
+### 1ページあたりに表示する件数を指定する
+1ページに表示される質問と回答の情報を5件にします。コントローラーからビューに送る質問と回答の情報も5件のみになります。
+
+/app/controller/top_controller.rb
+```ruby
+class TopController < ApplicationController
+  def index
+    @question = Question.new
+    @feed_contents = current_user.group.feed_contents.includes(:content).page(params[:page]).per(5)
+    @feed_contents_resource = @feed_contents.map(&:content)
+  end
+end
+```
+
+
+### ページネーションのリンクを表示させる
+
+ページネーションを実装する際にはコントローラーだけでなくビューにも編集を加える必要があります。
+
+/app/views/top/index.html.erb
+```html
+  <%= render @feed_contents_resource %>
+
+  <%= paginate(@feed_contents) %>
+```
+
+
+<a name="functions_answers"></a>
+## 質問に答えた人だけが回答を見えるようにする
+今の仕様だと質問に答えていなくても、その質問に対する他の人の回答を見ることができます。なので、その質問に答えた人だけが回答を見れるようにして、より投稿したくなるようにしましょう。
+
+### 質問に答えていない場合の文言をビューに追加する
+回答が見えるかどうかを変更したいので、編集するのはビューファイルです。
+
+もし現在のユーザーがその質問に答えている場合は、その質問に対する回答を表示する。
+現在のユーザがその質問に答えていない（それ以外）場合は、「※質問に答えると他の人の回答を見ることが出来ます」と表示させます。このような条件分岐にはif文をつかいますね。
+
+/app/views/questions/show.html.erb
+```html
+    <% if @question.answers.present? %>
+      <h3><span>A</span>この質問への回答</h3>
+      <% if @question.answered?(current_user) %>
+        <%= render partial: "questions/answer", collection: @answers %>
+      <% else %>
+        <h1>※質問に答えると他の人の回答を見ることが出来ます</h1>
+      <% end %>
+    <% end %>
+```
+
+/app/models/question.rb
+```ruby
+    def answered?(user)
+      # レシーバである質問に、現在ログインしているユーザーが既に回答している場合はtrueを、回答していない場合はfalseを返す
+      answers.exists?(user_id: user.id)
+    end
+```
+
+
+
+
+
+
+
+
+<a name="functions_titile"></a>
+## ページに応じてタイトルを切り替える
+ここまででアプリはほぼ完成です。ですがどのページも「Profy」という同じタイトルになっているので、ページごとにタイトルを切り替えたいと思います。
+タイトルはブラウザのツールバーに表示され、またお気に入り(ブックマーク)に登録された際や、検索エンジンの検索結果などにも表示されます。
+
+
+
+### レイアウトファイルにタイトルのコンテンツを設定する
+
+* **provideメソッド**
+
+provideメソッドはレイアウトファイルの内容をyieldで読み込みビューファイルによって上書きすることができます。例えば、ページ固有のタイトルなどを表示させたい時などに使用します。
+個々のビューファイルでprovide :title, "個別タイトル"のように記述すればページ固有のタイトルを設定することができます。
+
+/app/views/layouts/application.html.erb
+```html
+    <title>Profy<%= yield :title %></title>
+```
+
+
+### 個々のビューファイルに固有のタイトルを設定する
+
+個々のビューファイルでprovideメソッドを使用して、タイトルの表示を設定します。Profyには複数のページが存在しますが、ここでは
+マイページ、グループページ、プロフィール編集ページ、グループ情報編集ページの4つのページにそれぞれのタイトルを設定しましょう。
+
+ページ | タイトル
+- | -
+マイページ |  Profy｜田中 太郎さん
+グループページ |Profy｜techcamp
+プロフィール編集ページ |Profy｜プロフィール編集
+グループ情報編集ページ |Profy｜グループ情報編集
+
+
+
+
+
+
+
+
+
 
 
 

@@ -6,7 +6,7 @@ $ brew update
 
 # install mecab
 $ brew install mecab
-brew install mecab-ipadic
+$ brew install mecab-ipadic
 
 # Checking mecab
 ➜  ~  mecab

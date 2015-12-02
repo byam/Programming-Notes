@@ -1,0 +1,107 @@
+## Herokuにログインしましょう
+
+Heroku Toolbeltをインストールしたので、ターミナル上でHerokuのコマンドが使えるようなりました。
+
+アップロードしたいアプリのディレクトリに移動後heroku loginコマンドを実行してください。
+
+ログイン後、メールアドレスの入力を求められるので、Herokuに登録したメールアドレスを入力してください。
+
+```sh
+$ cd my_app_name                           #アップロードしたいアプリのディレクトリに移動
+$ heroku login                             #herokuへログインする為のコマンド
+=> Enter your Heroku credentials.
+=> Email:                                  #メールアドレスの入力を求められる
+```
+
+## アプリにHeroku用の設定をする
+
+### CSSファイルを正しく読み込ませるようにする
+
+アプリをアップロードしても静的アセットファイル（画像やCSS）がHeroku上でうまく動作しない場合があるので、rails_12factorというGemを入れる必要があります。
+
+* **rails_12factor**
+
+静的アセットファイルやログの保存先をHeroku用に微調整してくれるGemです。
+
+> Gemfile
+```ruby
+gem 'rails_12factor'
+```
+
+> config/environments/production.rb
+```ruby
+config.cache_classes = true
+config.serve_static_assets = true
+config.assets.compile = true
+config.assets.digest = true
+```
+
+> git
+```sh
+$ git init
+$ git add .
+$ git commit -m "init commit"
+```
+
+
+
+
+## アプリをデプロイする
+
+作成したアプリをHerokuにアップする為に、まずHeroku上にアプリケーションを作成する必要があります。
+
+heroku createコマンドを入力してHerokuに新しいアプリケーションを作成しましょう。
+```sh
+$ heroku create
+$ heroku rename bya-profy
+```
+
+https://bya-profy.herokuapp.com/
+
+
+
+### データベースをMySQLに変更する
+Herokuでは、使用するデータベースの設定がデフォルトでPostgreSQLというデータベースになっています。
+
+今回はMySQLを使用したいので、その為の設定を行います。
+
+まずは、heroku addons:add cleardbを入力して、ClearDBアドオンを追加しましょう。
+
+* **ClearDBアドオン**
+
+ClearDBアドオンとは、ClearDBというHerokuとは独立したデータベースサービスが提供している、MySQLを使うためのものです。
+```sh
+$ heroku addons:add cleardb
+```
+これでデータベースの設定をMySQLにする事ができましたが、Ruby on Railsを使う場合はMySQLのバージョンを対応するGemに合わせる必要があるので設定を変更します。
+
+heroku config | grep CLEARDB_DATABASE_URLコマンドを入力すると、自分のデータベース情報が表示されます。
+
+```sh
+$ heroku config | grep CLEARDB_DATABASE_URL
+CLEARDB_DATABASE_URL: mysql://beadf3eed08635:7384d01a@us-cdbr-iron-east-03.cleardb.net/heroku_0b5a7b27569d3b3?reconnect=true
+
+$ git push heroku master
+
+$ heroku run rake db:migrate
+
+$ heroku open
+```
+
+
+### Herokuのデータベースに接続する
+```sh
+heroku config --app bya-profy
+=== bya-profy Config Vars
+CLEARDB_DATABASE_URL:     mysql://beadf3eed08635:7384d01a@us-cdbr-iron-east-03.cleardb.net/heroku_0b5a7b27569d3b3?reconnect=true
+DATABASE_URL:             postgres://omzouggaklmujb:jB7dp-BtmWjRMKRZ7C537A_IzT@ec2-54-83-204-159.compute-1.amazonaws.com:5432/d24vq38mgv60v8
+LANG:                     en_US.UTF-8
+RACK_ENV:                 production
+RAILS_ENV:                production
+RAILS_SERVE_STATIC_FILES: enabled
+SECRET_KEY_BASE:          8f168e806261524b3b4ad5fc55e913ca84d80ad33b26bb458eac679f4abe2e8b1165c7b0ba07e170f6f2d0fe463c26400bda8b8693bd5954c3af5d760350afc3
+
+```
+
+
+

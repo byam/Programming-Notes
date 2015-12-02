@@ -1,0 +1,143 @@
+# PART I: Surface-level improvements
+
+Naming, commenting, and aesthetics—simple tips that apply to every line of your codebase
+
+* [Packing Information into Names](#pack_info)
+
+    This chapter is organized into six specific topics:
+
+    * [Choosing specific words](#pack_info_spw)
+    * [Avoiding generic names (or knowing when to use them)](#pack_info_gen)
+    * [Using concrete names instead of abstract names](#pack_info_con)
+    * [Attaching extra information to a name, by using a suffix or prefix](#pack_info_exn)
+    * [Deciding how long a name should be](#pack_info_lon)
+    * [Using name formatting to pack extra information](#pack_info_fon)
+
+
+
+
+
+
+<a name="pack_info"></a>
+# Packing Information into Names
+
+<a name="pack_info_spw"></a>
+## Choosing specific words
+
+#### KEY IDEA: It’s better to be clear and precise than to be cute.
+
+```sh
+# bad
+GetPage()
+
+# good
+FetchPage() or DownloadPage()
+```
+
+
+
+```sh
+# bad
+Size()
+
+# good
+Height()
+NumNodes()
+MemoryBytes()
+```
+
+```sh
+# bad
+Stop()
+
+# good
+Kill()
+Pause()
+Resume()
+```
+
+Here are some examples of a word, as well as more “colorful” versions that might apply to your situation:
+
+Word | Alternatives
+- | -
+send |deliver, dispatch, announce, distribute, route
+find |search, extract, locate, recover
+start |launch, create, begin, open
+make |create, set up, build, generate, compose, add, new
+
+
+<a name="pack_info_gen"></a>
+## Avoiding generic names (or knowing when to use them)
+
+```javascript
+# example
+var euclidean_norm = function (v) {
+var retval = 0.0;
+for (var i = 0; i < v.length; i += 1)
+retval += v[i] * v[i]; return Math.sqrt(retval);
+};
+
+
+# bad
+var retval
+
+# good
+var sum_squares
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+* [Using concrete names instead of abstract names](#pack_info_con)
+* [Attaching extra information to a name, by using a suffix or prefix](#pack_info_exn)
+* [Deciding how long a name should be](#pack_info_lon)
+* [Using name formatting to pack extra information](#pack_info_fon)

@@ -1,0 +1,31 @@
+# The Arf of Readable Code
+
+* [PART I: Surface-level improvements](https://github.com/byam/Programming-Notes/tree/master/readable_code-note/part1.mdown)
+
+    Naming, commenting, and aesthetics—simple tips that apply to every line of your codebase
+
+    This chapter is organized into six specific topics:
+
+    * Packing Information into Names
+
+* [PART II: Simplifying loops and logic](#)
+
+    Ways to refine the loops, logic, and variables in your program to make them easier to understand
+
+* [PART III: Reorganizing your code](#)
+
+    Higher-level ways to organize large blocks of code and attack problems at the function level
+
+* [PART IV: Selected topics](#)
+
+    Applying “easy to understand” to testing and to a larger data structure coding example
+
+
+
+
+
+
+
+
+
+PACKING INFORMATION INTO NAMES 7 Choose Specific Words 8 Avoid Generic Names Like tmp and retval 10 Prefer Concrete Names over Abstract Names 13 Attaching Extra Information to a Name 15 How Long Should a Name Be? 18 Use Name Formatting to Convey Meaning 20 Summary
