@@ -24,7 +24,7 @@ Naming, commenting, and aesthetics—simple tips that apply to every line of you
 <a name="pack_info_spw"></a>
 ## Choosing specific words
 
-#### KEY IDEA: It’s better to be clear and precise than to be cute.
+> KEY IDEA:: It’s better to be clear and precise than to be cute.
 
 ```sh
 # bad
@@ -69,12 +69,14 @@ make |create, set up, build, generate, compose, add, new
 <a name="pack_info_gen"></a>
 ## Avoiding generic names (or knowing when to use them)
 
+> ADVICE:: The name retval doesn’t pack much information. Instead, use a name that describes the variable’s value.
 ```javascript
 # example
 var euclidean_norm = function (v) {
-var retval = 0.0;
-for (var i = 0; i < v.length; i += 1)
-retval += v[i] * v[i]; return Math.sqrt(retval);
+    var retval = 0.0;
+    for (var i = 0; i < v.length; i += 1)
+        retval += v[i] * v[i];
+    return Math.sqrt(retval);
 };
 
 
@@ -86,6 +88,106 @@ var sum_squares
 ```
 
 
+> ADVICE::
+The name `tmp` should be used only in cases when being short-lived and temporary is the most important fact about that variable.
+
+```java
+# bad
+String tmp = user.name();
+tmp += " " + user.phone_number(); tmp += " " + user.email();
+...
+template.set("user_info", tmp);
+
+# good
+tmp_file = tempfile.NamedTemporaryFile() ...
+SaveData(tmp_file, ...)
+```
+
+
+> Loop Iterators
+```c++
+# bad
+for (int i = 0; i < clubs.size(); i++)
+    for (int j = 0; j < clubs[i].members.size(); j++)
+        for (int k = 0; k < users.size(); k++) if (clubs[i].members[k] == users[j])
+            cout << "user[" << j << "] is in club[" << i << "]" << endl;
+
+# good (ci, mi, ui)
+if (clubs[ci].members[mi] == users[ui])
+```
+
+
+> ADVICE::
+If you’re going to use a generic name like tmp, it, or retval, have a good reason for doing so.
+
+
+
+<a name="pack_info_con"></a>
+## Prefer Concrete Names over Abstract Names
+
+```c++
+# Ex1: which tests whether the server can listen on a given TCP/IP port
+
+# abstract
+ServerCanStart();
+
+# concrete
+CanListenOnPort();
+
+
+
+# Ex2:
+# abstract
+--run_locally
+
+# concrete
+--extra_logging
+--use_local_database
+```
+
+
+<a name="pack_info_exn"></a>
+## Attaching extra information to a name, by using a suffix or prefix
+
+```c++
+# bad
+string id = "af84ef845cd8";
+
+# good
+string hex_id = "af84ef845cd8";
+```
+
+
+
+
+#### Values with Units
+If your variable is a measurement (such as an amount of time or a number of bytes), it’s helpful to encode the units into the variable’s name.
+
+```js
+// Ex: JavaScript code that measures the load time of a web page:
+
+// bad
+var start = (new Date()).getTime(); // top of the page
+...
+var elapsed = (new Date()).getTime() - start; // bottom of the page document
+writeln("Load time was: " + elapsed + " seconds");
+
+
+
+// good
+var start_ms = (new Date()).getTime(); // top of the page
+...
+var elapsed_ms = (new Date()).getTime() - start_ms; // bottom of the page document.
+writeln("Load time was: " + elapsed_ms / 1000 + " seconds");
+
+```
+
+Function parameter | Renaming parameter to encode units
+--- | ---
+Start(int delay) | delay → delay_secs
+CreateCache(int size) | size → size_mb
+ThrottleDownload(float limit) | limit → max_kbps
+Rotate(float angle) | angle → degrees_cw
 
 
 
@@ -93,51 +195,40 @@ var sum_squares
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-* [Using concrete names instead of abstract names](#pack_info_con)
-* [Attaching extra information to a name, by using a suffix or prefix](#pack_info_exn)
 * [Deciding how long a name should be](#pack_info_lon)
 * [Using name formatting to pack extra information](#pack_info_fon)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
