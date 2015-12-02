@@ -71,6 +71,7 @@ make | create, set up, build, generate, compose, add, new
 ## Avoiding generic names (or knowing when to use them)
 
 > ADVICE:: The name retval doesn’t pack much information. Instead, use a name that describes the variable’s value.
+
 ```javascript
 # example
 var euclidean_norm = function (v) {
@@ -106,6 +107,7 @@ SaveData(tmp_file, ...)
 
 
 > Loop Iterators
+
 ```c++
 # bad
 for (int i = 0; i < clubs.size(); i++)
