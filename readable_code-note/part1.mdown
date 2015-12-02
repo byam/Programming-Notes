@@ -12,6 +12,7 @@ Naming, commenting, and aesthetics—simple tips that apply to every line of you
     * [Attaching extra information to a name, by using a suffix or prefix](#pack_info_exn)
     * [Deciding how long a name should be](#pack_info_lon)
     * [Using name formatting to pack extra information](#pack_info_fon)
+    * [Summary](#pack_summary)
 
 
 
@@ -58,12 +59,12 @@ Resume()
 
 Here are some examples of a word, as well as more “colorful” versions that might apply to your situation:
 
-| Word | Alternatives |
-| - | - |
-send |deliver, dispatch, announce, distribute, route
-find |search, extract, locate, recover
-start |launch, create, begin, open
-make |create, set up, build, generate, compose, add, new
+Word | Alternatives
+--- | ---
+send | deliver, dispatch, announce, distribute, route
+find | search, extract, locate, recover
+start | launch, create, begin, open
+make | create, set up, build, generate, compose, add, new
 
 
 <a name="pack_info_gen"></a>
@@ -190,22 +191,131 @@ ThrottleDownload(float limit) | limit → max_kbps
 Rotate(float angle) | angle → degrees_cw
 
 
+#### Encoding Other Important Attributes
+You shouldn’t use attributes like unescaped_ or _utf8 for every variable in your program. They’re most important in places where a bug can easily sneak in if someone mistakes what the variable is, especially if the consequences are dire, as with a security bug. Essentially, if it’s a critical thing to understand, put it in the name.
+
+Situation | Variable name | Better name
+--- | --- | ---
+A password is in “plaintext” and should be encrypted before further processing | password | plaintext_password
+A user-provided comment that needs escaping before being displayed | comment | unescaped_comment
+Bytes of html have been converted to UTF-8 | html | html_utf8
+Incoming data has been “url encoded” | data | data_urlenc
+
+[Hungarian notation](https://msdn.microsoft.com/en-us/library/aa260976(VS.60).aspx) is a system of naming used widely inside Microsoft. It encodes the “type” of every variable into the name’s prefix. Here are some examples:
+
+Name | Meaning
+--- | ---
+pLast | A pointer (p) to the last element in some data structure
+pszBuffer | A pointer (p) to a zero-terminated (z) string (s) buffer
+cch | A count (c) of characters (ch)
+mpcopx | A map (m) from a pointer to a color (pco) to a pointer to an x-axis length (px)
+
+
+<a name="pack_info_lon"></a>
+## Deciding how long a name should be
+
+#### Shorter Names Are Okay for Shorter Scope
+```c++
+// OK for short scope
+if (debug) {
+    map<string,int> m;
+    LookUpNamesNumbers(&m);
+    Print(m);
+}
+
+
+// NG for long scope
+LookUpNamesNumbers(&m);
+Print(m);
+```
+
+
+
+#### Typing Long Names—Not a Problem Anymore
+Every programming text editor we’ve seen has “word completion” built in.
+
+Editor | Command
+--- | ---
+Vi | Ctrl-p
+Emacs | Meta-/ (hit ESC, then /)
+Eclipse | Alt-/
+IntelliJ IDEA | Alt-/
+TextMate | ESC
+
+
+
+#### Acronyms and Abbreviations
+```sh
+# bad
+class BEManager # instead of BackEndManager
+
+# ok
+doc # instead of document
+str # instead of string
+```
+
+
+#### Throwing Out Unneeded Words
+```sh
+ConvertToString() # => ToString()
+
+DoServeLoop() # => ServeLoop()
+```
 
 
 
 
+<a name="pack_info_fon"></a>
+## Using name formatting to pack extra information
 
-* [Deciding how long a name should be](#pack_info_lon)
-* [Using name formatting to pack extra information](#pack_info_fon)
+The way you use underscores, dashes, and capitalization can also pack more information in a name. For example, here is some C++ code that follows the [formatting conventions used for Google open source projects:](https://google.github.io/styleguide/cppguide.html)
+
+```c++
+static const int kMaxOpenFiles = 100;
+class LogReader {
+    public:
+    void OpenFile(string local_file);
+
+    private:
+    int offset_; DISALLOW_COPY_AND_ASSIGN(LogReader);
+};
+```
 
 
 
 
+#### Other Formatting Conventions
+
+```js
+var x = new DatePicker(); // DatePicker() is a "constructor" function
+var y = pageHeight(); // pageHeight() is an ordinary function
+
+
+var $all_images = $("img"); // $all_images is a jQuery object
+var height = 250; // height is not
+```
+
+
+```html
+<!-- underscores to separate words in IDs and dashes to separate words in classes: -->
+<div id="middle_column" class="main-content"> ...
+```
 
 
 
+<a name="pack_summary"></a>
+## Summary
 
+The single theme for this chapter is: **pack information into your names**. By this, we mean that the reader can extract a lot of information just from reading the name.
 
+Here are some specific tips we covered:
+
+* **Use specific words**—for example, instead of Get, words like Fetch or Download might be better, depending on the context.
+* **Avoid generic names** like tmp and retval, unless there’s a specific reason to use them.
+* **Use concrete names** that describe things in more detail—the name ServerCanStart() is vague compared to CanListenOnPort().
+* **Attach important details** to variable names—for example, append _ms to a variable whose value is in milliseconds or prepend raw_ to an unprocessed variable that needs escaping.
+* **Use longer names for larger scopes**—don’t use cryptic one- or two-letter names for variables that span multiple screens; shorter names are better for variables that span only a few lines.
+* **Use capitalization, underscores, and so on in a meaningful way**—for example, you can append “_” to class members to distinguish them from local variables.
 
 
 
