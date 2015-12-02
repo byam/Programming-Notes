@@ -73,7 +73,7 @@ make | create, set up, build, generate, compose, add, new
 > ADVICE:: The name retval doesn’t pack much information. Instead, use a name that describes the variable’s value.
 
 ```javascript
-# example
+// example
 var euclidean_norm = function (v) {
     var retval = 0.0;
     for (var i = 0; i < v.length; i += 1)
@@ -82,10 +82,10 @@ var euclidean_norm = function (v) {
 };
 
 
-# bad
+// bad
 var retval
 
-# good
+// good
 var sum_squares
 ```
 
@@ -94,13 +94,13 @@ var sum_squares
 The name `tmp` should be used only in cases when being short-lived and temporary is the most important fact about that variable.
 
 ```java
-# bad
+// bad
 String tmp = user.name();
 tmp += " " + user.phone_number(); tmp += " " + user.email();
 ...
 template.set("user_info", tmp);
 
-# good
+// good
 tmp_file = tempfile.NamedTemporaryFile() ...
 SaveData(tmp_file, ...)
 ```
@@ -109,13 +109,13 @@ SaveData(tmp_file, ...)
 > Loop Iterators
 
 ```c++
-# bad
+// bad
 for (int i = 0; i < clubs.size(); i++)
     for (int j = 0; j < clubs[i].members.size(); j++)
         for (int k = 0; k < users.size(); k++) if (clubs[i].members[k] == users[j])
             cout << "user[" << j << "] is in club[" << i << "]" << endl;
 
-# good (ci, mi, ui)
+// good (ci, mi, ui)
 if (clubs[ci].members[mi] == users[ui])
 ```
 
@@ -129,21 +129,21 @@ If you’re going to use a generic name like tmp, it, or retval, have a good rea
 ## Prefer Concrete Names over Abstract Names
 
 ```c++
-# Ex1: which tests whether the server can listen on a given TCP/IP port
+// Ex1: which tests whether the server can listen on a given TCP/IP port
 
-# abstract
+// abstract
 ServerCanStart();
 
-# concrete
+// concrete
 CanListenOnPort();
 
 
 
-# Ex2:
-# abstract
+// Ex2:
+// abstract
 --run_locally
 
-# concrete
+// concrete
 --extra_logging
 --use_local_database
 ```
@@ -153,10 +153,10 @@ CanListenOnPort();
 ## Attaching extra information to a name, by using a suffix or prefix
 
 ```c++
-# bad
+// bad
 string id = "af84ef845cd8";
 
-# good
+// good
 string hex_id = "af84ef845cd8";
 ```
 
