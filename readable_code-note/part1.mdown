@@ -57,7 +57,7 @@ Naming, commenting, and aesthetics—simple tips that apply to every line of you
     * [Summary](#pre_com__summary)
 
 
-
+---
 <a name="pack_info"></a>
 # Chapter 2: Packing Information into Names
 
@@ -364,7 +364,7 @@ Here are some specific tips we covered:
 
 
 
-
+---
 <a name="name_miss"></a>
 # Chapter 3: Names That Can’t Be Misconstrued
 
@@ -631,7 +631,7 @@ inherit_from_experiment_id: 100
 
 
 
-
+---
 <a name="aes"></a>
 # Chapter 4: AESTHETICS
 
@@ -1036,7 +1036,7 @@ Here are specific techniques we discussed:
 
 
 
-
+---
 <a name="comment"></a>
 ## Chapter 5: KNOWING WHAT TO COMMENT
 
@@ -1324,30 +1324,238 @@ The purpose of a comment is to help the reader know what the writer knew when wr
 
 
 
-
+---
 <a name="pre_com"></a>
 # Chapter 6: MAKING COMMENTS PRECISE AND COMPACT
 
-<a name=""></a>
-* [Keep Comments Compact](#pre_com_keep)
-<a name=""></a>
-* [Avoid Ambiguous Pronouns](#pre_com_avoid)
-<a name=""></a>
-* [Polish Sloppy Sentences](#pre_com_polish)
-<a name=""></a>
-* [Describe Function Behavior Precisely](#pre_com_desc)
-<a name=""></a>
-* [Use Input/Output Examples That Illustrate Corner Cases](#pre_com_cor)
-<a name=""></a>
-* [State the Intent of Your Code](#pre_com_intent)
-<a name=""></a>
-* [“Named Function Parameter” Comments](#pre_com_named)
-<a name=""></a>
-* [Use Information-Dense Words](#pre_com_dense)
-<a name=""></a>
-* [Summary](#pre_com__summary)
+This chapter is about how to write comments that are precise and compact.
+
+If you're going to write a comment at all, it might as well be precise—as specific and detailed as possible. On the other hand, comments take up extra space on the screen, and take extra time to read. So comments should also be compact.
+
+> KEY IDEA::
+Comments should have a high information-to-space ratio.
 
 
+<a name="pre_com_keep"></a>
+## Keep Comments Compact
+
+
+Here’s an example of a comment for a C++ type definition:
+```c++
+    // The int is the CategoryType.
+    // The first float in the inner pair is the 'score',
+    // the second is the 'weight'.
+    typedef hash_map<int, pair<float, float> > ScoreMap;
+```
+But why use three lines to explain it, when you can illustrate it in just one line?
+```c++
+    // CategoryType -> (score, weight)
+    typedef hash_map<int, pair<float, float> > ScoreMap;
+```
+Some comments need three lines of space, but this is not one of them.
+
+<a name="pre_com_avoid"></a>
+## Avoid Ambiguous Pronouns
+
+Here’s an example:
+```c++
+// Insert the data into the cache, but check if it's too big first.
+```
+In this comment, “it” might refer to the data or the cache. You could probably figure that out
+by reading the rest of the code. But if you have to do that, what’s the point of the comment?
+The safest thing is to “fill in” pronouns if there’s any chance of confusion. In the previous example, let’s assume “it” was “the data”:
+```c++
+// Insert the data into the cache, but check if the data is too big first.
+```
+This is the simplest change to make. You could also have restructured the sentence to make
+“it” perfectly clear:
+```c++
+// If the data is small enough, insert it into the cache.
+```
+
+
+<a name="pre_com_polish"></a>
+## Polish Sloppy Sentences
+
+In many cases, making a comment more precise goes hand-in-hand with making it more compact.
+Here is an example from a web crawler:
+```python
+    # Depending on whether we've already crawled this URL before, give it a different priority.
+```
+This sentence might seem okay, but compare it to this version:
+```python
+    # Give higher priority to URLs we've never crawled before.
+```
+This sentence is simpler, smaller, and more direct. It also explains that higher priority is given to uncrawled URLs—the previous comment didn’t contain that information.
+
+
+<a name="pre_com_desc"></a>
+## Describe Function Behavior Precisely
+
+Imagine you just wrote a function that counts the number of lines in a file:
+```c++
+    // Return the number of lines in this file.
+    int CountLines(string filename) { ... }
+```
+This comment isn’t very precise—there are a lot of ways to define a “line.” Here are some corner cases to think about:
+
+* "" (an empty file)—0 or 1 line?
+* "hello"—0 or 1 line?
+* "hello\n"—1 or 2 lines?
+* "hello\n world"—1 or 2 lines?
+* "hello\n\r cruel\n world\r"—2, 3, or 4 lines?
+
+The simplest implementation is to count the number of newline (\n) characters. (This is the way the Unix command wc works.) Here’s a better comment to match this implementation:
+```c++
+    // Count how many newline bytes ('\n') are in the file.
+    int CountLines(string filename) { ... }
+```
+This comment isn’t much longer than the first version, but contains much more information. It tells the reader that the function might return 0 if there are no newlines. It also tells the reader that carriage returns (\r) are ignored.
+
+
+<a name="pre_com_cor"></a>
+## Use Input/Output Examples That Illustrate Corner Cases
+
+For example, here’s a common function that removes parts of a string:
+```c++
+    // Remove the suffix/prefix of 'chars' from the input 'src'.
+    String Strip(String src, String chars) { ... }
+```
+This comment isn’t very precise because it can’t answer questions such as:
+
+* Is chars a whole substring that is to be removed, or effectively just an unordered set of letters?
+* What if there are multiples of chars on the end of src?
+
+Instead, a well-chosen example can answer these questions:
+```c++
+    // ...
+    // Example: Strip("abba/a/ba", "ab") returns "/a/"
+    String Strip(String src, String chars) { ... }
+```
+
+The example “shows off” the full functionality of Strip(). Note that a simpler example wouldn’t be as useful, if it doesn’t answer those questions:
+```c++
+    // Example: Strip("ab", "a") returns "b"
+```
+
+Here’s another example of a function that could use an illustration:
+```c++
+    // Rearrange 'v' so that elements < pivot come before those >= pivot;
+    // Then return the largest 'i' for which v[i] < pivot (or -1 if none are < pivot)
+    int Partition(vector<int>* v, int pivot);
+```
+
+This comment is actually very precise, but a little bit hard to visualize. Here’s an example you could include to illustrate things further:
+```c++
+    // ...
+    // Example: Partition([8 5 9 8 2], 8) might result in [5 2 | 8 9 8] and return 1
+    int Partition(vector<int>* v, int pivot);
+```
+
+There are a number of points to mention about the specific example input/output we chose:
+
+* The pivot is equal to elements in the vector to illustrate that edge case.
+* We put duplicates in the vector (8) to illustrate that this is an acceptable input.
+* The resulting vector is not sorted—if it were, the reader might get the wrong idea.
+* Because the return value was 1, we made sure 1 wasn’t also a value in the vector—that would be confusing.
+
+
+<a name="pre_com_intent"></a>
+## State the Intent of Your Code
+
+Here’s an example of such a comment:
+```java
+    void DisplayProducts(list<Product> products) {
+        products.sort(CompareProductByPrice);
+        // Iterate through the list in reverse order
+        for (list<Product>::reverse_iterator it = products.rbegin(); it != products.rend();
+             ++it)
+            DisplayPrice(it->price);
+        ...
+    }
+```
+
+All this comment does is just describe the line below it. Instead, consider this better comment:
+```java
+        // Display each price, from highest to lowest
+        for (list<Product>::reverse_iterator it = products.rbegin(); ... )
+```
+
+This comment explains what the program is doing at a higher level. This is much more in tune with what the programmer was thinking when she wrote the code.
+
+
+<a name="pre_com_named"></a>
+## “Named Function Parameter” Comments
+
+In languages like Python, you can assign the arguments by name:
+```python
+def Connect(timeout, use_encryption):  ...
+
+# Call the function using named parameters
+Connect(timeout = 10, use_encryption = False)
+```
+
+In languages like C++ and Java, you can’t do this. However, you can use an inline comment to the same effect:
+```c++
+void Connect(int timeout, bool use_encryption) { ... }
+
+// Call the function with commented parameters
+Connect(/* timeout_ms = */ 10, /* use_encryption = */ false);
+```
+
+When it comes to boolean arguments, it’s especially important to put /* name = */ in front of the value. Putting the comment behind the value is very confusing:
+```c++
+// Don't do this!
+Connect( ... , false /* use_encryption */);
+
+// Don't do this either!
+Connect( ... , false /* = use_encryption */);
+```
+
+
+<a name="pre_com_dense"></a>
+## Use Information-Dense Words
+
+For example, suppose your comment were:
+```c++
+    // This class contains a number of members that store the same information as in the
+    // database, but are stored here for speed. When this class is read from later, those
+    // members are checked first to see if they exist, and if so are returned; otherwise the
+    // database is read from and that data stored in those fields for next time.
+```
+
+Instead, you could just say:
+```c++
+    // This class acts as a caching layer to the database.
+```
+
+As another example, a comment such as:
+```c++
+    // Remove excess whitespace from the street address, and do lots of other cleanup
+    // like turn "Avenue" into "Ave." This way, if there are two different street addresses
+    // that are typed in slightly differently, they will have the same cleaned-up version and
+    // we can detect that these are equal.
+```
+
+could instead be:
+```c++
+    // Canonicalize the street address (remove extra spaces, "Avenue" -> "Ave.", etc.)
+```
+
+There are lots of words and phrases that pack a lot of meaning, such as “heuristic,” “brute- force,” “naive solution,” and the like. If you have a comment that feels a bit long-winded, see if it can be described as a typical programming situation.
+
+
+<a name="pre_com__summary"></a>
+## Summary
+
+This chapter is about writing comments that pack as much information into as small a space as possible. Here are the specific tips:
+
+* [Avoid pronouns like “it” and “this” when they can refer to multiple things.](#pre_com_avoid)
+* [Describe a function’s behavior with as much precision as is practical.](#pre_com_desc)
+* [Illustrate your comments with carefully chosen input/output examples.](#pre_com_cor)
+* [State the high-level intent of your code, rather than the obvious details.](#pre_com_intent)
+* [Use inline comments (e.g., Function(/* arg = */ ... ) ) to explain mysterious function arguments.](#pre_com_named)
+* [Keep your comments brief by using words that pack a lot of meaning.](#pre_com_dense)
 
 
 
