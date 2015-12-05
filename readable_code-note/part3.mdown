@@ -1,0 +1,51 @@
+# PART III: Reorganizing your code
+
+Higher-level ways to organize large blocks of code and attack problems at the function level
+
+
+
+* [Chapter 10: EXTRACTING UNRELATED SUBPROBLEMS](#ch10)
+
+    * [Introductory Example: findClosestLocation()](#ch10_intro)
+    * [Pure Utility Code](#ch10_pure)
+    * [Other General-Purpose Code](#ch10_other)
+    * [Create a Lot of General-Purpose Code](#ch10_create)
+    * [Project-Specific Functionality](#ch10_project)
+    * [Simplifying an Existing Interface](#ch10_simply)
+    * [Reshaping an Interface to Your Needs](#ch10_reshape)
+    * [Taking Things Too Far](#ch10_take)
+    * [Summary](#ch10_summary)
+
+
+
+
+
+---
+
+
+
+
+
+
+
+<a name="ch10"></a>
+# Chapter 10: EXTRACTING UNRELATED SUBPROBLEMS
+
+<a name=""></a>
+* [Introductory Example: findClosestLocation()](#ch10_intro)
+<a name=""></a>
+* [Pure Utility Code](#ch10_pure)
+<a name=""></a>
+* [Other General-Purpose Code](#ch10_other)
+<a name=""></a>
+* [Create a Lot of General-Purpose Code](#ch10_create)
+<a name=""></a>
+* [Project-Specific Functionality](#ch10_project)
+<a name=""></a>
+* [Simplifying an Existing Interface](#ch10_simply)
+<a name=""></a>
+* [Reshaping an Interface to Your Needs](#ch10_reshape)
+<a name=""></a>
+* [Taking Things Too Far](#ch10_take)
+<a name=""></a>
+* [Summary](#ch10_summary)

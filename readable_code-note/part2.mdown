@@ -1,0 +1,1124 @@
+# PART II: Simplifying loops and logic
+
+Ways to refine the loops, logic, and variables in your program to make them easier to understand
+
+
+
+* [Chapter 7: MAKING CONTROL FLOW EASY TO READ](#ch7)
+
+    * [The Order of Arguments in Conditionals](#ch7_condi)
+    * [The Order of if/else Blocks](#ch7_ifelse)
+    * [The ?: Conditional Expression (a.k.a. “Ternary Operator”)](#ch7_aka)
+    * [Avoid do/while Loops](#ch7_avoid)
+    * [Returning Early from a Function](#ch7_return)
+    * [The Infamous goto](#ch7_goto)
+    * [Minimize Nesting](#ch7_mini)
+    * [Can You Follow the Flow of Execution?](#ch7_exe)
+    * [Summary](#ch7_summary)
+
+* [Chapter 8: BREAKING DOWN GIANT EXPRESSIONS](#ch8)
+
+    * [Explaining Variables](#ch8_explain)
+    * [Summary Variables](#ch8_sum)
+    * [Using De Morgan’s Laws](#ch8_de)
+    * [Abusing Short-Circuit Logic](#ch8_abu)
+    * [Example: Wrestling with Complicated Logic](#ch8_ex)
+    * [Breaking Down Giant Statements](#ch8_break)
+    * [Another Creative Way to Simplify Expressions](#ch8_crea)
+    * [Summary](#ch8_summary)
+
+
+* [Chapter 9: VARIABLES AND READABILITY](#ch9)
+
+    * [Eliminating Variables](#ch9_eli)
+    * [Shrink the Scope of Your Variables](#ch9_shrink)
+    * [Prefer Write-Once Variables](#ch9_pre)
+    * [A Final Example](#ch9_final)
+    * [Summary](#ch9_summary)
+
+
+
+---
+
+<a name="ch7"></a>
+# Chapter 7: MAKING CONTROL FLOW EASY TO READ
+
+If code had no conditionals, loops, or any other control flow statements, it would be very easy to read. These jumps and branches are the hard stuff, where code can get confusing quickly. This chapter is about making the control flow in your code easy to read.
+
+> KEY IDEA::
+Make all your conditionals, loops, and other changes to control flow as “natural” as possible—written in a way that doesn’t make the reader stop and reread your code.
+
+<a name="ch7_condi"></a>
+## The Order of Arguments in Conditionals
+
+Which of these two pieces of code is more readable:
+
+```python
+if (length >= 10)
+# or
+if (10 <= length)
+
+
+
+while (bytes_received < bytes_expected)
+# or
+while (bytes_expected > bytes_received)
+```
+
+
+Left-hand side | Right-hand side
+--- | ---
+The expression “being interrogated,” whose value is more in flux. | The expression being compared against, whose value is more constant.
+
+
+
+
+<a name="ch7_ifelse"></a>
+## The Order of if/else Blocks
+
+Some cases there are good reasons to prefer one order over the other:
+
+* Prefer dealing with the positive case first instead of the negative—e.g., if (debug) instead of if (!debug).
+* Prefer dealing with the simpler case first to get it out of the way. This approach might also allow both the if and the else to be visible on the screen at the same time, which is nice.
+* Prefer dealing with the more interesting or conspicuous case first.
+
+For example, suppose you have a web server that’s building a response based on whether the
+URL contains the query parameter expand_all:
+```c++
+if (!url.HasQueryParameter("expand_all")) {
+    response.Render(items);
+    ...
+} else {
+    for (int i = 0; i < items.size(); i++) {
+        items[i].Expand();
+    }
+    ...
+}
+```
+
+When the reader glances at the first line, her brain immediately thinks about the expand_all case. It’s like when someone says, “Don’t think of a pink elephant.” You can’t help but think about it—the “don’t” is drowned out by the more unusual “pink elephant.”
+
+Here, expand_all is our pink elephant. Because it’s the more interesting case (and it’s the positive case, too), let’s deal with it first:
+```c++
+if (url.HasQueryParameter("expand_all")) {
+    for (int i = 0; i < items.size(); i++) {
+        items[i].Expand();
+    }
+    ...
+} else {
+    response.Render(items);
+    ...
+}
+```
+
+On the other hand, here’s a situation where the negative case is the simpler and more interesting/dangerous one, so we deal with it first:
+
+```python
+if not file:
+    # Log the error ...
+else:
+    # ...
+```
+
+
+
+<a name="ch7_aka"></a>
+# The ?: Conditional Expression (a.k.a. “Ternary Operator”)
+
+> KEY IDEA::
+Instead of minimizing the number of lines, a better metric is to minimize the time needed for someone to understand it.
+
+> ADVICE::
+By default, use an if/else. The ternary ?: should be used only for the simplest cases.
+
+
+
+Here’s a case where the ternary operator is readable and compact:
+```python
+time_str += (hour >= 12) ? "pm" : "am";
+```
+
+However, these expressions can quickly become difficult to read:
+```c++
+return exponent >= 0 ? mantissa * (1 << exponent) : mantissa / (1 << -exponent);
+```
+
+Spelling out the logic with an if/else statement makes the code more natural:
+```c++
+if (exponent >= 0) {
+    return mantissa * (1 << exponent);
+} else {
+    return mantissa / (1 << -exponent);
+}
+```
+
+
+<a name="ch7_avoid"></a>
+## Avoid do/while Loops
+
+Overall, Bjarne Stroustrup, the creator of C++, says it best (in The C++ Programming Language):
+
+    In my experience, the do-statement is a source of errors and confusion. ... I prefer the condition “up front where I can see it.” Consequently, I tend to avoid do-statements.
+
+
+The expression is executed at least once. Here’s an example:
+```java
+// Search through the list, starting at 'node', for the given 'name'.
+// Don't consider more than 'max_length' nodes.
+public boolean ListHasNode(Node node, String name, int max_length) {
+    do {
+        if (node.name().equals(name))
+            return true;
+        node = node.next();
+    } while (node != null && --max_length > 0);
+    return false;
+}
+```
+
+Fortunately, we’ve found that in practice most do/while loops could have been written as
+while loops to begin with:
+```java
+public boolean ListHasNode(Node node, String name, int max_length) {
+    while (node != null && max_length-- > 0) {
+        if (node.name().equals(name)) return true;
+        node = node.next();
+    }
+    return false;
+}
+```
+
+<a name="ch7_return"></a>
+## Returning Early from a Function
+
+Returning early from a function is perfectly fine—and often desirable. For example:
+```java
+public boolean Contains(String str, String substr) {
+    if (str == null || substr == null) return false;
+    if (substr.equals("")) return true;
+    ...
+    }
+```
+
+Implementing this function without these “guard clauses” would be very unnatural.
+One of the motivations for wanting a single exit point is so that all the cleanup code at the bottom of the function is guaranteed to be called. But modern languages offer more sophisticated ways to achieve this guarantee:
+
+Language | Structured idiom for cleanup code
+--- | ---
+C++ | destructors
+Java, Python | try finally
+Python | with
+C# | using
+
+
+<a name="ch7_goto"></a>
+## The Infamous goto
+
+The simplest, most innocent use of goto is with a single exit at the bottom of a function:
+```c++
+    if (p == NULL) goto exit;
+    ...
+
+exit:
+    fclose(file1);
+    fclose(file2);
+    ...
+    return;
+```
+
+If this were the only form of goto allowed, goto wouldn’t be much of a problem.
+
+The problems can come when there are multiple goto targets, especially when their paths cross. In particular, gotos that go upward can make for real spaghetti code, and they can surely be replaced with structured loops. Most of the time, goto should be avoided.
+
+<a name="ch7_mini"></a>
+## Minimize Nesting
+
+Here is a relatively simple example of this—see if you notice yourself looking back up to double- check which block conditions you’re in:
+
+```c++
+if (user_result == SUCCESS) {
+    if (permission_result != SUCCESS) {
+        reply.WriteErrors("error reading permissions");
+        reply.Done();
+        return;
+    }
+    reply.WriteErrors("");
+} else {
+    reply.WriteErrors(user_result);
+}
+
+reply.Done();
+```
+
+#### How Nesting Accumulates
+
+> KEY IDEA
+Look at your code from a fresh perspective when you’re making changes. Step back and look at it as a whole.
+
+
+Originally, the code was simple:
+```c++
+if (user_result == SUCCESS) {
+    reply.WriteErrors("");
+} else {
+    reply.WriteErrors(user_result);
+}
+reply.Done();
+```
+
+
+#### Removing Nesting by Returning Early
+
+Okay, so let’s improve the code. Nesting like this can be removed by handling the “failure cases” as soon as possible and returning early from the function:
+```c++
+if (user_result != SUCCESS) {
+    reply.WriteErrors(user_result);
+    reply.Done();
+    return;
+}
+
+if (permission_result != SUCCESS) {
+    reply.WriteErrors(permission_result);
+    reply.Done();
+    return;
+}
+
+reply.WriteErrors("");
+reply.Done();
+```
+
+This code only has one level of nesting, instead of two. But more importantly, the reader never has to “pop” anything from his mental stack—every if block ends in a return.
+
+
+
+#### Removing Nesting Inside Loops
+
+The technique of returning early isn’t always applicable. For example, here’s a case of code nested in a loop:
+
+```c++
+for (int i = 0; i < results.size(); i++) {
+    if (results[i] != NULL) {
+        non_null_count++;
+        if (results[i]->name != "") {
+            cout << "Considering candidate..." << endl;
+            ...
+        }
+    }
+}
+```
+
+Inside a loop, the analogous technique to returning early is to continue:
+
+```c++
+for (int i = 0; i < results.size(); i++) {
+    if (results[i] == NULL) continue;
+    non_null_count++;
+
+    if (results[i]->name == "") continue;
+    cout << "Considering candidate..." << endl;
+    ...
+}
+```
+
+In the same way that an if (...) return; acts as a guard clause for a function, these if (...) continue; statements act as guard clauses for the loop.
+
+In general, the continue statement can be confusing, because it bounces the reader around, like a goto inside the loop. But in this case, each iteration of the loop is independent (the loop is a “for each”), so the reader can easily see that continue just means “skip over this item.”
+
+
+<a name="ch7_exe"></a>
+## Can You Follow the Flow of Execution?
+
+This chapter has been about low-level control flow: how to make loops, conditionals, and other jumps easy to read. But you should also think about the “flow” of your program at a high level. Ideally, it would be easy to follow the entire execution path of your program—you’d start at main() and mentally step through the code, as one function calls another, until the program exits.
+
+In practice, however, programming languages and libraries have constructs that let code execute “behind the scenes” or make it difficult to follow. Here are some examples:
+
+Programming construct | How high-level program flow gets obscured
+--- | ---
+threading | It’s unclear what code is executed when.
+signal/interrupt handlers | Certain code might be executed at any time.
+exceptions | Execution can bubble up through multiple function calls.
+function pointers & anonymous functions | It’s hard to know exactly what code is going to run because that isn’t known at compile time.
+virtual methods | object.virtualMethod() might invoke code of an unknown subclass.
+
+<a name="ch7_summary"></a>
+## Summary
+
+There are a number of things you can do to make your code’s control flow easier to read.
+
+When writing a comparison (while (bytes_expected > bytes_received)), it’s better to put the changing value on the left and the more stable value on the right (while (bytes_received < bytes_expected)).
+
+You can also reorder the blocks of an if/else statement. Generally, try to handle the positive/ easier/interesting case first. Sometimes these criteria conflict, but when they don’t, it’s a good rule of thumb to follow.
+
+Certain programming constructs, like the ternary operator (: ?), the do/while loop, and goto often result in unreadable code. It’s usually best not to use them, as clearer alternatives almost always exist.
+
+Nested code blocks require more concentration to follow along. Each new nesting requires more context to be “pushed onto the stack” of the reader. Instead, opt for more “linear” code to avoid deep nesting.
+
+Returning early can remove nesting and clean up code in general. “Guard statements” (handling simple cases at the top of the function) are especially useful.
+
+
+
+
+
+
+
+
+
+
+---
+<a name="ch8"></a>
+# Chapter 8: BREAKING DOWN GIANT EXPRESSIONS
+
+> KEY IDEA::
+Break down your giant expressions into more digestible pieces.
+
+In this chapter, we’ll go through various ways you can manipulate and break down your code so that it’s easier to swallow.
+
+
+<a name="ch8_explain"></a>
+## Explaining Variables
+
+The simplest way to break down an expression is to introduce an extra variable that captures a smaller subexpression. This extra variable is sometimes called an “explaining variable” because it helps explain what the subexpression means.
+
+Here is an example:
+```python
+if line.split(':')[0].strip() == "root":
+    ...
+```
+
+Here is the same code, now with an explaining variable:
+```python
+username = line.split(':')[0].strip()
+if username == "root":
+    ...
+```
+
+<a name="ch8_sum"></a>
+## Summary Variables
+
+We call this a summary variable if its purpose is simply to replace a larger chunk of code with a smaller name that can be managed and thought about more easily.
+
+```c++
+if (request.user.id == document.owner_id) {
+    // user can edit this document...
+}
+...
+
+if (request.user.id != document.owner_id){
+    // document is read-only...
+}
+```
+
+The main concept in this code is, “Does the user own the document?” That concept can be stated more clearly by adding a summary variable:
+
+```python
+final boolean user_owns_document = (request.user.id == document.owner_id);
+
+if (user_owns_document) {
+// user can edit this document...
+}
+...
+if (!user_owns_document) {
+    // document is read-only...
+}
+```
+
+It may not seem like much, but the statement if (user_owns_document) is a little easier to think about. Also, having user_owns_document defined at the top tells the reader upfront that “this is a concept we’ll be referring to throughout this function.”
+
+<a name="ch8_de"></a>
+## Using De Morgan’s Laws
+
+De Morgan’s laws. They are two ways to rewrite a boolean expression into an equivalent one:
+
+1. not (a or b or c) ⇔ (not a) and (not b) and (not c)
+2. not (a and b and c) ⇔ (not a) or (not b) or (not c)
+
+You can sometimes use these laws to make a boolean expression more readable. For instance, if your code is:
+
+```c++
+if (!(file_exists && !is_protected)) Error("Sorry, could not read file.");
+```
+It can be rewritten to:
+```c++
+if (!file_exists || is_protected) Error("Sorry, could not read file.");
+```
+
+<a name="ch8_abu"></a>
+## Abusing Short-Circuit Logic
+
+Here is an example of a statement once written by one of the authors:
+```c++
+    assert((!(bucket = FindBucket(key))) || !bucket->IsOccupied());
+```
+
+In English, what this code is saying is, “Get the bucket for this key. If the bucket is not null, then make sure it isn’t occupied.”
+Even though it’s only one line of code, it really makes most programmers stop and think. Now compare it to this code:
+
+```c++
+    bucket = FindBucket(key);
+    if (bucket != NULL) assert(!bucket->IsOccupied());
+```
+
+It does exactly the same thing, and even though it’s two lines of code, it’s much easier to understand.
+
+
+> KEY IDEA::
+Beware of “clever” nuggets of code—they’re often confusing when others read the code later.
+
+Does this mean you should avoid making use of short-circuit behavior? No. There are plenty of cases where it can be used cleanly, for instance:
+
+```python
+    if (object && object->method()) ...
+```
+
+There is also a newer idiom worth mentioning: in languages like Python, JavaScript, and Ruby, the “or” operator returns one of its arguments (it doesn’t convert to a boolean), so code like:
+
+```python
+x = a || b || c
+```
+can be used to pick out the first “truthy” value from a, b, or c.
+
+
+
+<a name="ch8_ex"></a>
+## Example: Wrestling with Complicated Logic
+
+Suppose you’re implementing the following Range class:
+
+```c++
+struct Range {
+    int begin;
+    int end;
+    // For example, [0,5) overlaps with [3,8)
+    bool OverlapsWith(Range other);
+};
+```
+
+Here is one attempt at implementing OverlapsWith()—it checks if either endpoint of its range falls inside the other’s range:
+
+```c++
+bool Range::OverlapsWith(Range other) {
+    // Check if 'begin' or 'end' falls inside 'other'.
+    return  (begin >= other.begin && begin <= other.end) ||
+            (end >= other.begin && end <= other.end);
+}
+```
+
+Speaking of which, there is a bug. The previous code will claim that the Range [0,2) overlaps with [2,4) when in fact it doesn’t.
+
+The problem is that you have to be careful when comparing begin/end values using <= or just <. Here’s a fix to this problem:
+```python
+return  (begin >= other.begin && begin < other.end) ||
+        (end > other.begin && end <= other.end);
+```
+
+Now it’s correct, right? Actually, there’s another bug. This code has ignored the case when begin/ end completely surround other.
+
+Here’s a fix that handles this case, too:
+
+```python
+return  (begin >= other.begin && begin < other.end) ||
+        (end > other.begin && end <= other.end) ||
+        (begin <= other.begin && end >= other.end);
+```
+
+Yikes—this code has become way too complicated. You can’t expect anyone to read this code and confidently know that it’s correct. So what do we do? How can we break down this giant expression?
+
+
+#### Finding a More Elegant Approach
+
+
+But finding a more elegant solution takes creativity. How do you go about it? One technique is to see if you can solve the problem the **“opposite”** way. Depending on the situation you’re in, this could mean iterating through arrays in reverse or filling in some data structure backward rather than forward.
+
+Here, the opposite of OverlapsWith() is “doesn’t overlap.” Determining if two ranges don’t overlap turns out to be a much simpler problem, because there are only two possibilities:
+
+1. The other range ends before this one begins.
+2. The other range begins after this one ends.
+
+We can turn this into code quite easily:
+
+```java
+bool Range::OverlapsWith(Range other) {
+    if (other.end <= begin) return false;  // They end before we begin
+    if (other.begin >= end) return false;  // They begin after we end
+    return true;  // Only possibility left: they overlap
+}
+```
+
+Each line of code here is much simpler—it involves only a single comparison. That leaves the reader with enough brainpower to focus on whether <= is correct.
+
+
+<a name="ch8_break"></a>
+## Breaking Down Giant Statements
+
+This chapter is about breaking down individual expressions, but the same techniques apply to breaking down larger statements as well. For example, the following JavaScript code has a lot to take in at once:
+
+```js
+var update_highlight = function (message_num) {
+    if ($("#vote_value" + message_num).html() === "Up") {
+        $("#thumbs_up" + message_num).addClass("highlighted");
+        $("#thumbs_down" + message_num).removeClass("highlighted");
+    } else if ($("#vote_value" + message_num).html() === "Down") {
+        $("#thumbs_up" + message_num).removeClass("highlighted");
+        $("#thumbs_down" + message_num).addClass("highlighted");
+    } else {
+        $("#thumbs_up" + message_num).removeClass("highighted");
+        $("#thumbs_down" + message_num).removeClass("highlighted");
+    }
+};
+```
+
+The individual expressions in this code aren’t that big, but when placed all together, it forms one giant statement that hits you all at once.
+Fortunately, a lot of the expressions are the same, which means we can extract them out as summary variables at the top of the function (this is also an instance of the DRY—Don’t Repeat Yourself—principle):
+
+The creation of var hi = "highlighted" isn’t strictly needed, but as there were six copies of it, there were compelling benefits:
+
+* It helps avoid typing mistakes. (In fact, did you notice that in the first example, the string was misspelled as "highighted" in the fifth case?)
+* It shrinks the line width even more, making the code easier to scan through.
+* If the class name needed to change, there’s just one place to change it.
+
+
+```js
+var update_highlight = function (message_num) {
+    var thumbs_up = $("#thumbs_up" + message_num);
+    var thumbs_down = $("#thumbs_down" + message_num);
+    var vote_value = $("#vote_value" + message_num).html();
+    var hi = "highlighted";
+
+    if (vote_value === "Up") {
+        thumbs_up.addClass(hi);
+        thumbs_down.removeClass(hi);
+    } else if (vote_value === "Down") {
+        thumbs_up.removeClass(hi);
+        thumbs_down.addClass(hi);
+    } else {
+        thumbs_up.removeClass(hi);
+        thumbs_down.removeClass(hi);
+    }
+};
+```
+
+
+<a name="ch8_crea"></a>
+## Another Creative Way to Simplify Expressions
+
+Here’s another example with a lot going on in each expression, this time in C++:
+
+```c++
+void AddStats(const Stats& add_from, Stats* add_to) {
+    add_to->set_total_memory(add_from.total_memory() + add_to->total_memory());
+    add_to->set_free_memory(add_from.free_memory() + add_to->free_memory());
+    add_to->set_swap_memory(add_from.swap_memory() + add_to->swap_memory());
+    add_to->set_status_string(add_from.status_string() + add_to->status_string());
+    add_to->set_num_processes(add_from.num_processes() + add_to->num_processes());
+    ...
+}
+```
+
+Once again, your eyes are faced with code that’s long and similar, but not exactly the same. After ten seconds of careful scrutiny, you might realize that each line is doing the same thing, just to a different field each time:
+add_to->set_XXX(add_from.XXX() + add_to->XXX()); In C++, we can define a macro to implement this:
+
+```c++
+void AddStats(const Stats& add_from, Stats* add_to) {
+    #define ADD_FIELD(field) add_to->set_##field(add_from.field() + add_to->field())
+    ADD_FIELD(total_memory);
+    ADD_FIELD(free_memory);
+    ADD_FIELD(swap_memory);
+    ADD_FIELD(status_string);
+    ADD_FIELD(num_processes);
+    ...
+    #undef ADD_FIELD
+}
+```
+
+Now that we’ve stripped away all the clutter, you can look at the code and immediately understand the essence of what’s happening. It’s very clear that each line is doing the same thing.
+
+Note that we’re not advocating using macros very often—in fact, we usually avoid them because they can make code confusing and introduce subtle bugs. But sometimes, as in this case, they’re simple and can provide a clear benefit to readability.
+
+
+<a name="ch8_summary"></a>
+## Summary
+
+Giant expressions are hard to think about. This chapter showed a number of ways to break them down so the reader can digest them piece by piece.
+
+One simple technique is to introduce “explaining variables” that capture the value of some large subexpression. This approach has three benefits:
+
+* It breaks down a giant expression into pieces.
+* It documents the code by describing the subexpression with a succinct name.
+* It helps the reader identify the main “concepts” in the code.
+
+Another technique is to manipulate your logic using De Morgan’s laws—this technique can sometimes rewrite a boolean expression in a cleaner way (e.g., if (!(a && !b)) turns into if (!a || b)).
+
+We showed an example where a complex logical condition was broken down into tiny statements like “if (a < b) ...”. In fact, all of the improved-code examples in this chapter had if statements with no more than two values inside them. This setup is ideal. It may not always seem possible to do this—sometimes it requires “negating” the problem or considering the opposite of your goal.
+
+Finally, even though this chapter is about breaking down individual expressions, these same techniques often apply to larger blocks of code, too. So be aggressive in breaking down complex logic wherever you see it.
+
+
+---
+
+<a href="ch9"></a>
+# Chapter 9: VARIABLES AND READABILITY
+
+In this chapter, you’ll see how sloppy use of variables makes a program harder to understand. Specifically, there are three problems to contend with:
+
+1. The more variables there are, the harder it is to keep track of them all.
+2. The bigger a variable’s scope, the longer you have to keep track of it.
+3. The more often a variable changes, the harder it is to keep track of its current value.
+
+The next three sections discuss how to deal with these issues.
+
+
+<a href="ch9_eli"></a>
+## Eliminating Variables
+
+In this section, we’re interested in eliminating variables that don’t improve readability. When a variable like this is removed, the new code is more concise and just as easy to understand.
+
+In the following section are a few examples of how these unnecessary variables show up.
+
+#### Useless Temporary Variables
+
+
+In the following snippet of Python code, consider the now variable:
+```python
+now = datetime.datetime.now()
+root_message.last_view_time = now
+```
+
+Is now a variable worth keeping? No, and here are the reasons:
+
+* It isn’t breaking down a complex expression.
+* It doesn’t add clarification—the expression datetime.datetime.now() is clear enough.
+* It’s used only once, so it doesn’t compress any redundant code.
+
+Without now, the code is just as easy to understand:
+
+```python
+root_message.last_view_time = datetime.datetime.now()
+```
+
+Variables like now are usually “leftovers” that remain after code has been edited. The variable now might have been used in multiple places originally. Or maybe the coder anticipated using now multiple times, but never actually needed it.
+
+#### Eliminating Intermediate Results
+
+Here’s an example of a JavaScript function that removes a value from an array:
+```js
+var remove_one = function (array, value_to_remove) {
+    var index_to_remove = null;
+    for (var i = 0; i < array.length; i += 1) {
+        if (array[i] === value_to_remove) { index_to_remove = i;
+        break;
+        }
+    }
+    if (index_to_remove !== null) {
+        array.splice(index_to_remove, 1);
+    }
+};
+```
+
+The variable index_to_remove is just used to hold an intermediate result. Variables like this can
+sometimes be eliminated by handling the result as soon as you get it:
+```js
+var remove_one = function (array, value_to_remove) {
+    for (var i = 0; i < array.length; i += 1) {
+        if (array[i] === value_to_remove) {
+            array.splice(i, 1);
+            return;
+        }
+    }
+};
+```
+
+By allowing the code to return early, we got rid of index_to_remove altogether and simplified
+the code quite a bit.
+
+In general, it’s a good strategy to complete the task as quickly as possible.
+
+#### Eliminating Control Flow Variables
+
+Sometimes you’ll see this pattern of code in loops:
+
+```java
+boolean done = false;
+while (/* condition */ && !done) {
+    ...
+    if (...) {
+        done = true;
+        continue;
+    }
+}
+```
+
+The variable done might even be set to true in multiple places throughout the loop.
+
+Code like this is often trying to satisfy some unspoken rule that you shouldn’t break out of the middle of a loop. There is no such rule!
+
+Variables like done are what we call “control flow variables.” Their sole purpose is to steer the program’s execution—they don’t contain any real program data. In our experience, control flow variables can often be eliminated by making better use of structured programming:
+
+```java
+while (/* condition */) {
+    ...
+    if (...) {
+        break;
+    }
+}
+```
+
+This case was pretty easy to fix, but what if there are multiple nested loops for which a simple break wouldn’t suffice? In more complicated cases like that, the solution often involves moving code into a new function (either the code inside the loop, or the entire loop itself).
+
+<a href="ch9_shrink"></a>
+## Shrink the Scope of Your Variables
+
+> KEY IDEA::
+Make your variable visible by as few lines of code as possible.
+
+For example, suppose you have a very large class, with a member variable that’s used by only two methods, in the following way:
+```java
+class LargeClass {
+    string str_;
+
+    void Method1() {
+        str_ = ...;
+        Method2();
+    }
+
+    void Method2() { // Uses str_
+    }
+
+    // Lots of other methods that don't use str_ ...
+};
+```
+
+In some sense, a class member variable is like a “mini-global” inside the realm of the class. For large classes especially, it’s hard to keep track of all the member variables and which methods modify each one. The fewer mini-globals, the better.
+
+For this case, it may make sense to “demote” str_ to be a local variable:
+
+```java
+class LargeClass {
+    void Method1() {
+        string str = ...;
+        Method2(str); }
+
+    void Method2(string str) {
+        // Uses str
+    }
+
+    // Now other methods can't see str.
+};
+```
+
+
+#### if Statement Scope in C++
+
+```c++
+PaymentInfo* info = database.ReadPaymentInfo();
+if (info) {
+    cout << "User paid: " << info->amount() << endl;
+}
+// Many more lines of code below ...
+```
+
+But in this case, info is only used inside the if statement. In C++, we can actually define
+info in the conditional expression:
+
+```c++
+if (PaymentInfo* info = database.ReadPaymentInfo()) {
+    cout << "User paid: " << info->amount() << endl;
+}
+```
+
+#### Creating “Private” Variables in JavaScript
+
+Suppose you have a persistent variable that’s used by only one function:
+
+```js
+submitted = false; // Note: global variable
+
+var submit_form = function (form_name) {
+    if (submitted) {
+        return;  // don't double-submit the form
+    }
+    ...
+    submitted = true;
+};
+```
+
+Global variables like submitted can cause the person reading this code a lot of angst. It seems like submit_form() is the only function that uses submitted, but you can’t know for sure. In fact, another JavaScript file might be using a global variable named submitted too, for a different purpose!
+
+You can prevent this issue by wrapping submitted inside a closure:
+```js
+var submit_form = (function () {
+    var submitted = false; // Note: can only be accessed by the function below
+
+    return function (form_name) {
+        if (submitted) {
+            return;  // don't double-submit the form
+        }
+        ...
+        submitted = true;
+    };
+}());
+```
+
+Note the parentheses on the last line—the anonymous outer function is immediately executed, returning the inner function.
+
+#### JavaScript Global Scope
+
+In JavaScript, if you omit the keyword var from a variable definition (e.g., x = 1 instead of var x = 1), the variable is put into the global scope, where every JavaScript file and `<script>` block can access it. Here is an example:
+
+```html
+<script>
+    var f = function () {
+        // DANGER: 'i' is not declared with 'var'!
+        for (i = 0; i < 10; i += 1) ...
+    };
+
+    f();
+</script>
+```
+
+This code inadvertently puts i into the global scope, so a later block can still see it:
+
+```html
+<script>
+    alert(i); // Alerts '10'. 'i' is a global variable!
+</script>
+```
+
+Many programmers aren’t aware of this scoping rule, and this surprising behavior can cause strange bugs. A common manifestation of this bug is when two functions both create a local variable with the same name, but forget to use var. These functions will unknowingly “cross-talk” and the poor programmer might conclude that his computer is possessed or that his RAM has gone bad.
+
+The common “best practice” for JavaScript is to always define variables using the var keyword (e.g., var x = 1). This practice limits the scope of the variable to the (innermost) function where it’s defined.
+
+#### No Nested Scope in Python and JavaScript
+
+Languages like C++ and Java have block scope, where variables defined inside an if, for, try, or similar structure are confined to the nested scope of that block:
+
+```c++
+if (...) {
+    int x = 1;
+}
+x++; // Compile-error! 'x' is undefined.
+```
+
+But in Python and JavaScript, variables defined in a block “spill out” to the whole function. For example, notice the use of example_value in this perfectly valid Python code:
+
+```python
+# No use of example_value up to this point.
+if request:
+    for value in request.values:
+        if value > 0:
+            example_value = value
+            break
+
+for logger in debug.loggers:
+    logger.log("Example:", example_value)
+```
+
+The previous example is also buggy: if example_value is not set in the first part of the code, the second part will raise an exception: "NameError: ‘example_value’ is not defined". We can fix this, and make the code more readable, by defining example_value at the “closest common ancestor” (in terms of nesting) to where it’s used:
+
+```python
+example_value = None
+
+if request:
+    for value in request.values:
+        if value > 0:
+            example_value = value
+            break
+
+
+if example_value:
+    for logger in debug.loggers:
+        logger.log("Example:", example_value)
+```
+
+However, this is a case where example_value can be eliminated altogether.
+
+```python
+def LogExample(value):
+    for logger in debug.loggers:
+        logger.log("Example:", value)
+
+if request:
+    for value in request.values:
+        if value > 0:
+            LogExample(value)  # deal with 'value' immediately
+            break
+```
+
+
+#### Moving Definitions Down
+
+In the following example, all the variables are innocently defined at the top of the function:
+
+```python
+def ViewFilteredReplies(original_id):
+    filtered_replies = []
+    root_message = Messages.objects.get(original_id)
+    all_replies = Messages.objects.select(root_id=original_id)
+
+    root_message.view_count += 1
+    root_message.last_view_time = datetime.datetime.now()
+    root_message.save()
+
+    for reply in all_replies:
+        if reply.spam_votes <= MAX_SPAM_VOTES:
+            filtered_replies.append(reply)
+
+    return filtered_replies
+```
+
+
+The problem with this example code is that it forces the reader to think about three variables at once, and switch gears between them.
+Because the reader doesn’t need to know about all of them until later, it’s easy to just move each definition right before its first use:
+
+```python
+def ViewFilteredReplies(original_id):
+    root_message = Messages.objects.get(original_id)
+    root_message.view_count += 1
+    root_message.last_view_time = datetime.datetime.now()
+    root_message.save()
+
+    all_replies = Messages.objects.select(root_id=original_id) filtered_replies = []
+    for reply in all_replies:
+            if reply.spam_votes <= MAX_SPAM_VOTES:
+                filtered_replies.append(reply)
+
+    return filtered_replies
+```
+
+
+<a href="ch9_pre"></a>
+## Prefer Write-Once Variables
+
+So far in this chapter, we’ve discussed how it’s harder to understand programs with lots of variables “in play.” Well, it’s even harder to think about variables that are constantly changing. Keeping track of their values adds an extra degree of difficulty.
+
+To combat this problem, we have a suggestion that may sound a little strange: prefer write- once variables.
+
+Variables that are a “permanent fixture” are easier to think about. Certainly, constants like:
+```c++
+static const int NUM_THREADS = 10;
+```
+
+don’t require much thought on the reader’s part.
+
+> KEY IDEA::
+The more places a variable is manipulated, the harder it is to reason about its current value.
+
+
+<a href="ch9_final"></a>
+## A Final Example
+
+For the final example of the chapter, we’d like to show an example demonstrating many of the principles we’ve discussed so far.
+
+Suppose you have a web page with a number of input text fields, arranged like this:
+
+```html
+<input type="text" id="input1" value="Dustin">
+<input type="text" id="input2" value="Trevor">
+<input type="text" id="input3" value="">
+<input type="text" id="input4" value="Melissa">
+...
+```
+
+As you can see, the ids start with input1 and increment from there.
+
+Your job is to write a function named setFirstEmptyInput() that takes a string and puts it in the first empty `<input>` on the page (in the example shown, "input3"). The function should return the DOM element that was updated (or null if there were no empty inputs left). Here is some code to do this that doesn’t apply the principles in this chapter:
+
+```js
+var setFirstEmptyInput = function (new_value) {
+    var found = false;
+    var i = 1;
+    var elem = document.getElementById('input' + i);
+    while (elem !== null) {
+        if (elem.value === '') {
+            found = true;
+            break;
+        }
+        i++;
+        elem = document.getElementById('input' + i);
+    }
+    if (found) elem.value = new_value;
+    return elem;
+};
+```
+
+
+There are a lot of ways to think about improving this code, but we’re going to consider it from the perspective of the variables it uses:
+
+* var found
+* var i
+* var elem
+
+As we discussed earlier in the chapter, intermediate variables like `found` can often be eliminated by returning early. Here’s that improvement:
+
+```js
+var setFirstEmptyInput = function (new_value) {
+    var i = 1;
+    var elem = document.getElementById('input' + i);
+    while (elem !== null) {
+        if (elem.value === '') {
+            elem.value = new_value;
+            return elem;
+        }
+        i++;
+        elem = document.getElementById('input' + i);
+    }
+    return null;
+};
+```
+
+
+Next, take a look at elem. It’s used multiple times throughout the code in a very “loopy” way where it’s hard to keep track of its value. The code makes it seem as if elem is the value we’re iterating through, when really we’re just incrementing through i. So let’s restructure the while loop into a for loop over i:
+
+```js
+var setFirstEmptyInput = function (new_value) {
+    for (var i = 1; true; i++) {
+        var elem = document.getElementById('input' + i);
+        if (elem === null)
+            return null;  // Search Failed. No empty input found.
+
+        if (elem.value === '') {
+            elem.value = new_value;
+            return elem;
+        }
+    }
+};
+```
+
+
+
+
+<a href="ch9_summary"></a>
+## Summary
+
+
+This chapter is about how the variables in a program can quickly accumulate and become too much to keep track of. You can make your code easier to read by having fewer variables and making them as “lightweight” as possible. Specifically:
+
+* Eliminate variables that just get in the way. In particular, we showed a few examples of how to eliminate “intermediate result” variables by handling the result immediately.
+* Reduce the scope of each variable to be as small as possible. Move each variable to a place where the fewest lines of code can see it. Out of sight is out of mind.
+* Prefer write-once variables. Variables that are set only once (or const, final, or otherwise immutable) make code easier to understand.
+
+
+---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

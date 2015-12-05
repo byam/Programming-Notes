@@ -8,15 +8,15 @@
 
     * Packing Information into Names
 
-* [PART II: Simplifying loops and logic](#)
+* [PART II: Simplifying loops and logic](https://github.com/byam/Programming-Notes/tree/master/readable_code-note/part2.mdown)
 
     Ways to refine the loops, logic, and variables in your program to make them easier to understand
 
-* [PART III: Reorganizing your code](#)
+* [PART III: Reorganizing your code](#https://github.com/byam/Programming-Notes/tree/master/readable_code-note/part3.mdown)
 
     Higher-level ways to organize large blocks of code and attack problems at the function level
 
-* [PART IV: Selected topics](#)
+* [PART IV: Selected topics](#https://github.com/byam/Programming-Notes/tree/master/readable_code-note/part4.mdown)
 
     Applying “easy to understand” to testing and to a larger data structure coding example
 
