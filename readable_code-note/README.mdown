@@ -12,7 +12,7 @@
 
     Ways to refine the loops, logic, and variables in your program to make them easier to understand
 
-* [PART III: Reorganizing your code](#https://github.com/byam/Programming-Notes/tree/master/readable_code-note/part3.mdown)
+* [PART III: Reorganizing your code](https://github.com/byam/Programming-Notes/tree/master/readable_code-note/part3.mdown)
 
     Higher-level ways to organize large blocks of code and attack problems at the function level
 
