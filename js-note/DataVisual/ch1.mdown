@@ -16,7 +16,7 @@ For this chapter we’ll use the [Flotr2 library](http://www.humblesoftware.com/
 <a name="ch1_bar"></a>
 # Creating a Basic Bar Chart
 
-## Draw the Chart
+## Draw the Simple Chart
 
 Download javascript file:
 
@@ -37,8 +37,12 @@ Download javascript file:
 
     <div id="chart" style="width:600px;height:400px;"></div>
 
-    <!--[if lt IE 9]><script src="js/excanvas.min.js"></script><![endif]-->
+    <!-- [if lt IE 9]><script src="js/excanvas.min.js"></script><![endif] -->
+
+    <!-- Flotr2 library script -->
     <script src="js/flotr2.min.js"></script>
+
+    <!-- Our manipulation file -->
     <script src="js/bar_plot.js"></script>
 
   </body>
@@ -47,25 +51,216 @@ Download javascript file:
 
 *bar_plot.js:*
 ```js
+// sample data
 var wins = [[[2006,13],[2007,11],[2008,15],[2009,15],[2010,18],[2011,21],
              [2012,28]]];
 
+
 window.onload = function () {
-    Flotr.draw(
-        document.getElementById("chart"),
-        wins,
-        {
-            bars: {
-                show: true
-            }
+    // creating bar plot
+    Flotr.draw(document.getElementById("chart"), wins, {
+        bars: {
+            show: true
         }
-    );
+    });
 };
 ```
 
 It will produce:
 
 ![bar_plot1](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/bar_plot1.png)
+
+
+---
+
+## Fixed Chart
+
+#### Fix the Vertical Axis
+
+Setting the Vertical Axis
+
+* minimun scale
+* formatting
+
+*bar_plot.js*
+```js
+var wins = [[[2006,13],[2007,11],[2008,15],[2009,15],[2010,18],[2011,21],
+             [2012,28]]];
+
+window.onload = function () {
+    Flotr.draw(document.getElementById("chart"), wins, {
+        bars: {
+            show: true
+        },
+
+        // fixing vertical axis
+        yaxis: {
+            min: 0,
+            tickDecimals: 0
+        }
+    });
+};
+```
+
+The min property sets the minimum value for the y-axis, and the tickDecimals property tells Flotr2 how many decimal places to show for the labels. In our case we don’t want any decimal places.
+
+It will produce:
+
+![bar_plot2](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/bar_plot2.png)
+
+
+#### Fix the Horizontal Axis
+
+Setting the Vertical Axis
+
+* x-axes values to strings
+* spacing between the bars
+
+For the more general case, let’s first change our data to use simple numbers rather than years for the x-values. Then we’ll create an array that maps those simple numbers to arbitrary strings, which we can use as labels.
+
+*bar_plot.js:*
+```js
+// simple data as mapped
+var wins = [[[0,13],[1,11],[2,15],[3,15],[4,18],[5,21],[6,28]]];
+
+// mapping label data
+var years = [
+    [0, "2006"],
+    [1, "2007"],
+    [2, "2008"],
+    [3, "2009"],
+    [4, "2010"],
+    [5, "2011"],
+    [6, "2012"]
+];
+
+window.onload = function () {
+    Flotr.draw(document.getElementById("chart"), wins, {
+        bars: {
+            show: true,
+            barWidth: 0.5       // space between bars
+        },
+
+        yaxis: {
+            min: 0,
+            tickDecimals: 0
+        },
+
+        xaxis: {
+            ticks: years        // labels match which x-values
+        }
+    });
+};
+```
+
+It will produce:
+
+![bar_plot3](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/bar_plot3.png)
+
+
+#### Adjust the Styling
+
+Adding:
+
+* title
+* get rid of the unnecessary grid lines
+* adjust the coloring of the bars.
+
+```js
+// changing only inside the Flotr.draw()
+Flotr.draw(document.getElementById("chart"), wins, {
+    title: "Manchester City Wins",
+
+    colors: ["#89AFD2"],
+
+    bars: {
+        show: true,
+        barWidth: 0.5,
+        shadowSize: 0,
+        fillOpacity: 1,
+        lineWidth: 0
+    },
+
+    yaxis: {
+        min: 0,
+        tickDecimals: 0
+    },
+
+    xaxis: {
+        ticks: years
+    },
+
+    grid: {
+        horizontalLines: false,
+        verticalLines: false
+    }
+});
+```
+
+
+It will produce:
+
+![bar_plot4](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/bar_plot4.png)
+
+
+---
+
+## Vary the Bar Color
+
+Creating multiple series lets Flotr2 color each independently.
+
+
+```js
+var wins = [[[0,28]],[[1,28]],[[2,21]],[[3,20]],[[4,19]]];
+var teams = [
+    [0, "MCI"],
+    [1, "MUN"],
+    [2, "ARS"],
+    [3, "TOT"],
+    [4, "NEW"]
+];
+
+window.onload = function () {
+    Flotr.draw(document.getElementById("chart"), wins, {
+        title: "Premier League Wins (2011-2012)",
+
+        colors: ["#89AFD2", "#1D1D1D", "#DF021D", "#0E204B", "#E67840"],
+
+        bars: {
+            show: true,
+            barWidth: 0.5,
+            shadowSize: 0,
+            fillOpacity: 1,
+            lineWidth: 0
+        },
+
+        yaxis: {
+            min: 0,
+            tickDecimals: 0
+        },
+
+        xaxis: {
+            ticks: teams
+        },
+
+        grid: {
+        horizontalLines: false,
+        verticalLines: false
+        }
+    });
+};
+```
+
+
+It will produce:
+
+![bar_plot5](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/bar_plot5.png)
+
+
+
+
+
+
 
 
 
