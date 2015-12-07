@@ -1,0 +1,89 @@
+# Chapter 1: Graphing Data
+
+
+For this chapter we’ll use the [Flotr2 library](http://www.humblesoftware.com/flotr2/). Flotr2 makes it easy to add standard bar charts, line charts, and pie charts to any web page, and it also supports some less common chart types. We’ll take a look at all of these techniques in the examples that follow. Here’s what you’ll learn:
+
+* [How to create a basic bar chart](#ch1_bar)
+* [How to plot continuous data with a line chart](#ch1_line)
+* [How to emphasize fractions with a pie chart](#ch1_pie)
+* [How to plot X/Y data with a scatter chart](#ch1_scatter)
+* [How to show magnitudes of X/Y data with a bubble chart](#ch1_bubble)
+* [How to display multidimensional data with a radar chart](#ch1_radar)
+
+
+---
+
+<a name="ch1_bar"></a>
+# Creating a Basic Bar Chart
+
+## Draw the Chart
+
+Download javascript file:
+
+* [flotr2.min.js](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/DataVisual/ch1/bar-charts/js/flotr2.min.js)
+* [excanvas.min.js](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/DataVisual/ch1/bar-charts/js/excanvas.min.js)
+
+
+*index.html:*
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+  </head>
+
+  <body>
+
+    <div id="chart" style="width:600px;height:400px;"></div>
+
+    <!--[if lt IE 9]><script src="js/excanvas.min.js"></script><![endif]-->
+    <script src="js/flotr2.min.js"></script>
+    <script src="js/bar_plot.js"></script>
+
+  </body>
+</html>
+```
+
+*bar_plot.js:*
+```js
+var wins = [[[2006,13],[2007,11],[2008,15],[2009,15],[2010,18],[2011,21],
+             [2012,28]]];
+
+window.onload = function () {
+    Flotr.draw(
+        document.getElementById("chart"),
+        wins,
+        {
+            bars: {
+                show: true
+            }
+        }
+    );
+};
+```
+
+It will produce:
+
+![bar_plot1](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/DataVisual/bar_plot1.png =100x20)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -4,11 +4,12 @@
 
 * [OOP](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/OOP)
 
+* [Data Visualization with JavaScript](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/DataVisual)
 
 
 
 
-======================
+---
 
 * [基礎文法](#js)
 * [WebページでJavaScript](#js_web)
