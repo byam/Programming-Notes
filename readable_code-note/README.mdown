@@ -16,7 +16,7 @@
 
     Higher-level ways to organize large blocks of code and attack problems at the function level
 
-* [PART IV: Selected topics](#https://github.com/byam/Programming-Notes/tree/master/readable_code-note/part4.mdown)
+* [PART IV: Selected topics](https://github.com/byam/Programming-Notes/tree/master/readable_code-note/part4.mdown)
 
     Applying “easy to understand” to testing and to a larger data structure coding example
 
