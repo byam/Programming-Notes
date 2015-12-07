@@ -68,7 +68,7 @@ window.onload = function () {
 
 It will produce:
 
-![bar_plot1](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/bar_plot1.png)
+![bar_plot1](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch1/bar-charts/images/bar_plot1.png)
 
 
 ---
@@ -106,7 +106,7 @@ The min property sets the minimum value for the y-axis, and the tickDecimals pro
 
 It will produce:
 
-![bar_plot2](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/bar_plot2.png)
+![bar_plot2](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch1/bar-charts/images/bar_plot2.png)
 
 
 #### Fix the Horizontal Axis
@@ -155,7 +155,7 @@ window.onload = function () {
 
 It will produce:
 
-![bar_plot3](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/bar_plot3.png)
+![bar_plot3](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch1/bar-charts/images/bar_plot3.png)
 
 
 #### Adjust the Styling
@@ -200,7 +200,7 @@ Flotr.draw(document.getElementById("chart"), wins, {
 
 It will produce:
 
-![bar_plot4](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/bar_plot4.png)
+![bar_plot4](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch1/bar-charts/images/bar_plot4.png)
 
 
 ---
@@ -210,6 +210,7 @@ It will produce:
 Creating multiple series lets Flotr2 color each independently.
 
 
+*bar_plot.js:*
 ```js
 var wins = [[[0,28]],[[1,28]],[[2,21]],[[3,20]],[[4,19]]];
 var teams = [
@@ -254,14 +255,25 @@ window.onload = function () {
 
 It will produce:
 
-![bar_plot5](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/bar_plot5.png)
+![bar_plot5](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch1/bar-charts/images/bar_plot5.png)
+
+
+---
+
+## Bug
+
+```js
+$(".flotr-dummy-div").parent().hide();
+```
 
 
 
 
+---
 
+<a name="ch1_line"></a>
 
-
+# Plotting Continuous Data with a Line Chart
 
 
 
