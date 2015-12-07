@@ -262,6 +262,11 @@ It will produce:
 
 ## Bug
 
+In the process of con- structing its charts, Flotr2 creates dummy HTML elements so it can calculate their sizes.
+
+Flotr2 intends to place these dummy elements 10,000 pixels above the top of the browser window.
+
+To fix:
 ```js
 $(".flotr-dummy-div").parent().hide();
 ```
@@ -275,22 +280,195 @@ $(".flotr-dummy-div").parent().hide();
 
 # Plotting Continuous Data with a Line Chart
 
+## Graphing the Data
+
+#### Graphing One data
+
+*line_chart.js:*
+```js
+var co2 = [
+    [ 2000, 369.52 ],
+    [ 2001, 371.13 ],
+    [ 2002, 373.22 ],
+    [ 2003, 375.77 ],
+    [ 2004, 377.49 ],
+    [ 2005, 379.80 ],
+    [ 2006, 381.90 ],
+    [ 2007, 383.77 ],
+    [ 2008, 385.59 ],
+    [ 2009, 387.37 ],
+    [ 2010, 389.85 ],
+    [ 2011, 391.62 ],
+]
+
+window.onload = function () {
+    Flotr.draw(
+        document.getElementById("chart"),
+        [
+            { data: co2, lines: {show:true} }   // setting data here
+        ]
+    );
+};
+```
+
+It will produce:
+
+![line_chart1](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch1/line-charts/images/line_chart1.png)
 
 
+#### Adding data
 
 
+*line_chart.js:*
+```js
+var co2 = [
+    [ 2000, 369.52 ],
+    [ 2001, 371.13 ],
+    [ 2002, 373.22 ],
+    [ 2003, 375.77 ],
+    [ 2004, 377.49 ],
+    [ 2005, 379.80 ],
+    [ 2006, 381.90 ],
+    [ 2007, 383.77 ],
+    [ 2008, 385.59 ],
+    [ 2009, 387.37 ],
+    [ 2010, 389.85 ],
+    [ 2011, 391.62 ],
+];
+
+var temp = [
+    [ 2000,  0.4264 ],
+    [ 2001,  0.5496 ],
+    [ 2002,  0.6121 ],
+    [ 2003,  0.6211 ],
+    [ 2004,  0.5779 ],
+    [ 2005,  0.6510 ],
+    [ 2006,  0.5977 ],
+    [ 2007,  0.5923 ],
+    [ 2008,  0.5134 ],
+    [ 2009,  0.5985 ],
+    [ 2010,  0.6621 ],
+    [ 2011,  0.5362 ],
+];
+
+window.onload = function () {
+    Flotr.draw(
+        document.getElementById("chart"),
+        [
+            { data: co2, lines: {show:true} },
+            { data: temp, lines: {show:true}, yaxis: 2 }    // added new data here
+        ]
+    );
+};
+```
 
 
+It will produce:
+
+![line_chart2](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch1/line-charts/images/line_chart2.png)
 
 
+---
+
+## Improve the Chart’s Readability
+
+* eliminate the grid lines
+* extend the range of both vertical axes to provide a bit of breathing room for the chart. Both of these changes are additional options to the draw() method.
+
+```js
+Flotr.draw(
+    document.getElementById("chart"),
+
+    [
+        { data: co2, lines: {show:true} },
+        { data: temp, lines: {show:true}, yaxis: 2 }
+    ],
+
+    {
+        grid: {
+            horizontalLines: false,
+            verticalLines: false
+        },
+
+        yaxis: {min: 300, max: 400},
+
+        y2axis: {min: -0.15, max: 0.69}
+    }
+);
+```
 
 
+It will produce:
+
+![line_chart3](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch1/line-charts/images/line_chart3.png)
 
 
+#### Clarify the Temperature Measurements
+
+Adding series of data zero.
+```js
+var zero = [];
+for (var yr=1959; yr<2012; yr++) { zero.push([yr, 0]); };
+```
 
 
+```js
+Flotr.draw(
+    document.getElementById("chart"),
+    [
+        { data: zero, lines: {show:true, lineWidth: 1}, yaxis: 2, shadowSize: 0, color: "#545454" },
+        { data: co2, lines: {show:true} },
+        { data: temp, lines: {show:true}, yaxis: 2 }
+    ],
+
+    {
+        grid: {horizontalLines: false, verticalLines: false},
+        yaxis: {min: 300, max: 400},
+        y2axis: {min: -0.15, max: 0.69}
+    }
+);
+```
+
+It will produce:
+
+![line_chart4](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch1/line-charts/images/line_chart4.png)
+
+#### Label the Chart
+
+The overall chart title merits its own option, and we add the “°C” suffix using a tickFormatter() function.
 
 
+```js
+Flotr.draw(
+    document.getElementById("chart"),
 
+    [
+        {
+            data: zero,
+            label: "20<sup>th</sup> Century Baseline Temperature",
+            lines: {show:true, lineWidth: 1},
+            shadowSize: 0,
+            color: "#545454"
+        },
+        {
+            data: temp,
+            label: "Yearly Temperature Difference (°C)",
+            lines: {show:true}},
+        {
+            data: co2,
+            label: "CO<sub>2</sub> Concentration (ppm)",
+            lines: {show:true},
+            yaxis: 2 },
+     ],
 
+    {
+        title: "Global Temperature and CO<sub>2</sub> Concentration (NOAA Data)",
+        grid: {horizontalLines: false, verticalLines: false},
+        y2axis: {min: 300, max: 400},
+        yaxis: {min: -0.15, max: 0.69,
+                tickFormatter: function(val) {return val+" °C";}},
+     }
+);
+```
 
+![line_chart5](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch1/line-charts/images/line_chart5.png)
