@@ -19,13 +19,3 @@
 * [PART IV: Selected topics](https://github.com/byam/Programming-Notes/tree/master/readable_code-note/part4.mdown)
 
     Applying “easy to understand” to testing and to a larger data structure coding example
-
-
-
-
-
-
-
-
-
-PACKING INFORMATION INTO NAMES 7 Choose Specific Words 8 Avoid Generic Names Like tmp and retval 10 Prefer Concrete Names over Abstract Names 13 Attaching Extra Information to a Name 15 How Long Should a Name Be? 18 Use Name Formatting to Convey Meaning 20 Summary
