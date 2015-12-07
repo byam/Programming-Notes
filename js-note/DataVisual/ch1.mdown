@@ -65,7 +65,7 @@ window.onload = function () {
 
 It will produce:
 
-![bar_plot1](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/DataVisual/bar_plot1.png =100x20)
+![bar_plot1](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/bar_plot1.png)
 
 
 
