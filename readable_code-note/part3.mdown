@@ -1236,8 +1236,8 @@ which produces output like this:
 What’s great about this command line is that we’ve avoided writing any “real” code or checking anything into source control.
 
 
-<a name=""></a>
-## Summary](#ch13_summary)
+<a name="ch13_summary"></a>
+## Summary
 
 This chapter is about writing as little new code as possible. Each new line of code needs to be tested, documented, and maintained. Further, the more code in your codebase, the “heavier” it gets and the harder it is to develop in.
 

@@ -1,0 +1,1123 @@
+# PART IV: Selected topics
+
+Applying “easy to understand” to testing and to a larger data structure coding example
+
+In the previous three parts, we covered a wide range of techniques for making code easy to understand. In this part, we’re going to apply some of these techniques to two selected topics.
+
+First, we’re going to discuss testing—how to write tests that are effective and readable at the same time.
+
+Then we’re going to walk through the design and implementation of a special-purpose data structure (a “minute/hour counter”) to see an example where performance, good design, and readability interplay.
+
+* [Chapter 14: TESTING AND READABILITY](#ch14)
+
+    * [Make Tests Easy to Read and Maintain](#ch14_make)
+    * [What’s Wrong with This Test?](#ch14_wrong)
+    * [Making This Test More Readable](#ch14_read)
+    * [Making Error Messages Readable](#ch14_error)
+    * [Choosing Good Test Inputs](#ch14_input)
+    * [Naming Test Functions](#ch14_name)
+    * [What Was Wrong with That Test?](#ch14_was)
+    * [Test-Friendly Development](#ch14_friend)
+    * [Going Too Far](#ch14_far)
+    * [Summary](#ch14_summary)
+
+* [Chapter 15: DESIGNING AND IMPLEMENTING A “MINUTE/HOUR COUNTER”](#ch15)
+
+    * [The Problem](#ch15_prob)
+    * [Defining the Class Interface](#ch15_def)
+    * [Attempt 1: A Naive Solution](#ch15_at1)
+    * [Attempt 2: Conveyor Belt Design](#ch15_at2)
+    * [Attempt 3: A Time-Bucketed Design](#ch15_at3)
+    * [Comparing the Three Solutions](#ch15_comp)
+    * [Summary](#ch15_summary)
+
+---
+
+
+
+<a name="ch14"></a>
+# Chapter 14: TESTING AND READABILITY
+
+In this chapter, we’re going to show you simple techniques to write neat and effective tests.
+
+Testing means different things to different people. In this chapter, we use “test” to mean any code whose sole purpose is to check the behavior of another (“real”) piece of code. We’re going to focus on the readability aspect of tests and not get into whether you should write test code before writing real code ("test-driven development”) or other philosophical aspects of test development.
+
+<a name="ch14_make"></a>
+## Make Tests Easy to Read and Maintain
+
+It’s just as important for test code to be readable as it is for nontest code. Other coders will often look at the test code as unofficial documentation of how the real code works and should be used. So if the tests are easy to read, users will better understand how the real code behaves.
+
+> KEY IDEA::
+Test code should be readable so that other coders are comfortable changing or adding tests.
+
+When test code is big and scary, here’s what happens:
+
+* Coders are afraid to modify the real code. Oh, we don’t want to mess with that code—
+updating all the tests would be a nightmare!
+* Coders don’t add new tests when they add new code. Over time, less and less of your module is tested, and you are no longer confident that it all works.
+
+Instead, you want to encourage users of your code (especially you!) to be comfortable with the test code. They should be able to diagnose why a new change is breaking an existing test and feel like adding new tests is easy.
+
+<a name="ch14_wrong"></a>
+## What’s Wrong with This Test?
+
+In our codebase, we had a function to sort and filter a list of scored search results. Here’s the function declaration:
+```java
+// Sort 'docs' by score (highest first) and remove negative-scored documents.
+void SortAndFilterDocs(vector<ScoredDocument>* docs);
+```
+
+The test for this function originally looked something like:
+```java
+void Test1() {
+    vector<ScoredDocument> docs;
+    docs.resize(5);
+    docs[0].url = "http://example.com";
+    docs[0].score = -5.0;
+    docs[1].url = "http://example.com";
+    docs[1].score = 1;
+    docs[2].url = "http://example.com";
+    docs[2].score = 4;
+    docs[3].url = "http://example.com";
+    docs[3].score = -99998.7;
+    docs[4].url = "http://example.com";
+    docs[4].score = 3.0;
+
+    SortAndFilterDocs(&docs);
+    assert(docs.size() == 3);
+    assert(docs[0].score == 4);
+    assert(docs[1].score == 3.0);
+    assert(docs[2].score == 1);
+}
+```
+
+
+There are at least eight different problems with this test code. By the end of the chapter, you’ll be able to identify and fix all of them.
+
+
+<a name="ch14_read"></a>
+## Making This Test More Readable
+
+
+As a general design principle, you should **hide less important details from the user, so that more important details are most prominent.**
+
+As a first step in cleaning this up, we could create a helper function like:
+```c++
+void MakeScoredDoc(ScoredDocument* sd, double score, string url) {
+    sd->score = score;
+    sd->url = url;
+}
+```
+
+Using this function, our test code becomes slightly more compact:
+```c++
+void Test1() {
+    vector<ScoredDocument> docs;
+    docs.resize(5);
+    MakeScoredDoc(&docs[0], -5.0, "http://example.com");
+    MakeScoredDoc(&docs[1], 1, "http://example.com");
+    MakeScoredDoc(&docs[2], 4, "http://example.com");
+    MakeScoredDoc(&docs[3], -99998.7, "http://example.com");
+    ...
+}
+```
+
+But this isn’t good enough—there are still unimportant details in our face. For instance, the parameter "http://example.com" is just an eyesore. It’s always the same, and the exact URL doesn’t even matter—it’s just needed to fill out a valid ScoredDocument.
+
+Another unimportant detail we’re forced to see is docs.resize(5) and &docs[0], &docs[1], and so on. Let’s change our helper function to do more work for us and call it AddScoredDoc():
+
+```c++
+void AddScoredDoc(vector<ScoredDocument>& docs, double score) {
+    ScoredDocument sd;
+    sd.score = score;
+    sd.url = "http://example.com";
+    docs.push_back(sd);
+}
+```
+
+Using this function, our test code is even more compact:
+```c++
+void Test1() {
+    vector<ScoredDocument> docs;
+    AddScoredDoc(docs, -5.0);
+    AddScoredDoc(docs, 1);
+    AddScoredDoc(docs, 4);
+    AddScoredDoc(docs, -99998.7);
+    ...
+}
+```
+
+This code is better, but still doesn’t pass the “highly readable and writable” test. If you wanted to add another test with a new set of scored docs, it would require a lot of copying and pasting. So how do we go about improving it further?
+
+
+#### Creating the Minimal Test Statement
+
+To improve this test code, let’s use the technique from [Chapter 12, Turning Thoughts into Code](https://github.com/byam/Programming-Notes/blob/master/readable_code-note/part3.mdown#ch12). Let’s describe what our test is trying to do in plain English:
+
+* We have a list of documents whose scores are [-5, 1, 4, -99998.7, 3].
+* After SortAndFilterDocs(), the remaining documents should have scores of [4, 3, 1], in that order.
+
+As you can see, nowhere in that description did we mention a vector<ScoredDocument>. The array of scores is what’s most important here. Ideally, our test code would look something like:
+```c++
+CheckScoresBeforeAfter("-5, 1, 4, -99998.7, 3",  "4, 3, 1");
+```
+
+We were able to boil the essence of this test down to one line of code!
+
+This is not uncommon, though. The essence of most tests boils down to for this input/situation, expect this behavior/output. And many times this goal can be expressed in just one line. In addition to making the code very compact and readable, keeping your test statements short makes it very easy to add more test cases.
+
+
+#### Implementing Custom “Minilanguages”
+
+Notice that CheckScoresBeforeAfter() takes two string arguments that describe the array of scores. In later versions of C++, you can pass in array literals like this:
+
+```c++
+CheckScoresBeforeAfter({-5, 1, 4, -99998.7, 3}, {4, 3, 1});
+```
+
+In this case, writing some helper functions to parse a comma-separated list of numbers shouldn’t be too hard. Here’s what CheckScoresBeforeAfter() would look like:
+
+```c++
+void CheckScoresBeforeAfter(string input, string expected_output) {
+    vector<ScoredDocument> docs = ScoredDocsFromString(input);
+    SortAndFilterDocs(&docs);
+    string output = ScoredDocsToString(docs);
+    assert(output == expected_output);
+}
+```
+
+And for completeness, here are the helper functions that convert between string and vector<ScoredDocument>:
+
+```c++
+vector<ScoredDocument> ScoredDocsFromString(string scores) {
+    vector<ScoredDocument> docs;
+
+    replace(scores.begin(), scores.end(), ',', ' ');
+
+    // Populate 'docs' from a string of space-separated scores.
+    istringstream stream(scores);
+    double score;
+    while (stream >> score) {
+        AddScoredDoc(docs, score);
+    }
+    return docs;
+}
+
+string ScoredDocsToString(vector<ScoredDocument> docs) {
+    ostringstream stream;
+    for (int i = 0; i < docs.size(); i++) {
+        if (i > 0) stream << ", ";
+        stream << docs[i].score;
+    }
+    return stream.str();
+}
+```
+
+This may seem like a lot of code at first glance, but what it lets you do is incredibly powerful. Because you can write an entire test with just one call to CheckScoresBeforeAfter(), you’ll be inclined to add more tests (as we’ll be doing later in the chapter).
+
+
+<a name="ch14_error"></a>
+## Making Error Messages Readable
+
+
+The preceding code was nice, but what happens when that assert(output == expected_output) line fails? It produces an error message like this:
+```sh
+Assertion failed: (output == expected_output),
+    function CheckScoresBeforeAfter, file test.cc, line 37.
+```
+
+Obviously, if you ever saw this error, you’d wonder, What were the values of output and expected_output?
+
+#### Using Better Versions of assert()
+
+Fortunately, most languages and libraries have more sophisticated versions of assert() you can use. So instead of writing:
+```c++
+assert(output == expected_output);
+```
+you could use the Boost C++ library:
+```c++
+BOOST_REQUIRE_EQUAL(output, expected_output);
+```
+
+Now, if the test fails, you get a more detailed message like:
+```sh
+test.cc(37): fatal error in "CheckScoresBeforeAfter": critical check output == expected_output failed ["1, 3, 4" != "4, 3, 1"]
+```
+which is much more helpful.
+
+You should use these more helpful assertion methods when they’re available. It’ll pay off every time your test fails.
+
+#### BETTER ASSERT() IN OTHER LANGUAGES
+
+In Python, the built-in statement `assert a == b` produces a plain error message like:
+```sh
+File "file.py", line X, in <module>
+    assert a == b
+AssertionError
+```
+
+Instead, you can use the `assertEqual()` method in the unittest module:
+```python
+import unittest
+
+class MyTestCase(unittest.TestCase):
+    def testFunction(self):
+        a= 1
+        b= 2
+        self.assertEqual(a, b)
+
+if __name__ == '__main__':
+    unittest.main()
+```
+which produces an error message like:
+```sh
+File "MyTestCase.py", line 7, in testFunction
+        self.assertEqual(a, b)
+AssertionError: 1 != 2
+```
+
+Whichever language you’re using, there’s probably a library/framework (e.g., XUnit) available to help you. It pays to know your libraries!
+
+
+#### Hand-Crafted Error Messages
+
+Using BOOST_REQUIRE_EQUAL(), we were able to get the nicer error message:
+```sh
+output == expected_output failed ["1, 3, 4" != "4, 3, 1"]
+```
+
+However, this message could be improved further. For instance, it would be useful to see the original input that triggered this failure. The ideal error message would be something like:
+```sh
+CheckScoresBeforeAfter() failed,
+  Input:           "-5, 1, 4, -99998.7, 3"
+  Expected Output: "4, 3, 1"
+  Actual Output:   "1, 3, 4"
+```
+
+If this is what you want, go ahead and write it!
+
+```c++
+void CheckScoresBeforeAfter(...) {
+    ...
+    if (output != expected_output) {
+        cerr << "CheckScoresBeforeAfter() failed," << endl;
+        cerr << "Input:           \"" << input << "\"" << endl;
+        cerr << "Expected Output: \"" << expected_output << "\"" << endl;
+        cerr << "Actual Output:   \"" << output << "\"" << endl;
+        abort();
+}
+```
+
+The moral of the story is that error messages should be as helpful as possible. Sometimes, printing your own message by building a “custom assert” is the best way to do this.
+
+
+<a name="ch14_input"></a>
+## Choosing Good Test Inputs
+
+> KEY IDEA::
+In general, you should pick the simplest set of inputs that completely exercise the code.
+
+For example, suppose we had just written:
+```c++
+CheckScoresBeforeAfter("1, 2, 3", "3, 2, 1");
+```
+
+Although this test is simple, it doesn’t test the “filter negative scores” behavior of SortAndFilterDocs(). If there were a bug in that part of the code, this input wouldn’t trigger it.
+
+On the other extreme, suppose we wrote our test like this:
+```c++
+CheckScoresBeforeAfter("123014, -1082342, 823423, 234205, -235235", "823423, 234205, 123014");
+```
+
+These values are needlessly complex. (And they don’t even test the code thoroughly.)
+
+#### Simplifying the Input Values
+
+So what can we do to improve these input values?
+```c++
+CheckScoresBeforeAfter("-5, 1, 4, -99998.7, 3",  "4, 3, 1");
+```
+
+Well, the first thing you probably noticed is the very “loud” value -99998.7. That value was just meant to be “any negative number,” so a simpler value is just -1. (If -99998.7 was meant to be “a very negative number,” a better value would have been something crisp like -1e100.)
+
+> KEY IDEA::
+Prefer clean and simple test values that still get the job done.
+
+The other values in our test aren’t too bad, but while we’re here, we can reduce them to the simplest integers possible. Also, only one negative value is needed to test that negative values are removed. Here’s a new version of our test:
+```c++
+CheckScoresBeforeAfter("1, 2, -1, 3", "3, 2, 1");
+```
+We’ve simplified the test values without making them any less effective.
+
+There is definitely value in testing your code against large, crazy inputs. For instance, you might be tempted to include a test like:
+```c++
+CheckScoresBeforeAfter("100, 38, 19, -25, 4, 84, [lots of values] ...", "100, 99, 98, 97, 96, 95, 94, 93, ...");
+```
+Large inputs like these do a good job of exposing bugs such as buffer overruns or others you might not expect.
+
+But code like this is big and scary to look at and not completely effective in stress-testing the code. Instead, it’s more effective to construct large inputs programmatically, constructing a large input of (say) 100,000 values.
+
+
+
+#### Multiple Tests of Functionality
+
+Rather than construct a single “perfect” input to thoroughly exercise your code, it’s often easier, more effective, and more readable to write multiple smaller tests.
+
+Each test should push your code in a certain direction, trying to find a particular bug. For example, here are four tests for SortAndFilterDocs():
+```c++
+CheckScoresBeforeAfter("2, 1, 3", "3, 2, 1"); // Basic sorting
+CheckScoresBeforeAfter("0, -0.1, -10", "0"); // All values < 0 removed
+CheckScoresBeforeAfter("1, -2, 1, -2", "1, 1"); // Duplicates not a problem
+CheckScoresBeforeAfter("", ""); // Empty input OK
+```
+
+There are even more tests you could write if you wanted to be extremely thorough. Having separate test cases also makes it easier for the next person working on the code. If someone accidentally introduces a bug, the test failure will pinpoint the specific test that failed.
+
+
+<a name="ch14_name"></a>
+## Naming Test Functions
+
+In particular, it’s handy if the person reading the test code can quickly figure out:
+
+* The class being tested (if any)
+* The function being tested
+* The situation or bug being tested
+
+A simple approach to construct a good test function name is to just concatenate that information together, possibly with a “Test_” prefix.
+
+For instance, instead of naming it Test1(), we can use the Test_<FunctionName>() format:
+```c++
+void Test_SortAndFilterDocs() { ...
+}
+```
+Depending on how sophisticated this test is, you might consider a separate test function for each situation being tested. You could use the Test_<FunctionName>_<Situation>() format:
+```c++
+void Test_SortAndFilterDocs_BasicSorting() { ...
+}
+
+void Test_SortAndFilterDocs_NegativeValues() { ...
+}
+...
+```
+
+
+
+Don’t be afraid of having a long or clunky name here. This isn’t a function that will be called throughout your codebase, so the reasons for avoiding long function names don’t apply. The test function name is effectively acting like a comment. Also, if that test fails, most testing frameworks will print out the name of the function where the assertion failed, so a descriptive name is especially helpful.
+
+Note that if you’re using a testing framework, there might already be rules or conventions on how methods are named. For instance, the Python unittest module expects test method names to start with “test.”
+
+When it comes to naming helper functions in your test code, it’s useful to highlight whether the function does any assertions itself or is just an ordinary “test-unaware” helper. For instance, in this chapter, any helper function that calls assert() is named Check...(). But the function AddScoredDoc() was named just like an ordinary helper function.
+
+
+<a name="ch14_was"></a>
+## What Was Wrong with That Test?
+
+At the beginning of the chapter, we claimed there were at least eight things wrong with this test:
+```c++
+void Test1() {
+    vector<ScoredDocument> docs;
+    docs.resize(5);
+    docs[0].url = "http://example.com";
+    docs[0].score = -5.0;
+    docs[1].url = "http://example.com";
+    docs[1].score = 1;
+    docs[2].url = "http://example.com";
+    docs[2].score = 4;
+    docs[3].url = "http://example.com";
+    docs[3].score = -99998.7;
+    docs[4].url = "http://example.com";
+    docs[4].score = 3.0;
+
+    SortAndFilterDocs(&docs);
+
+    assert(docs.size() == 3);
+    assert(docs[0].score == 4);
+    assert(docs[1].score == 3.0);
+    assert(docs[2].score == 1);
+}
+```
+
+Now that we’ve learned some techniques for writing better tests, let’s identify them:
+
+1. The test is very long and full of unimportant details. You can describe what this test is doing in one sentence, so the test statement shouldn’t be much longer.
+2. Adding an other test isn’teasy. You’d be tempted to copy/paste/modify, which would make the code even longer and full of duplication.
+3. The test failure messages aren’t very useful. If this test fails,it will just say Assertionfailed: docs.size() == 3, which doesn’t give you enough information to debug it further.
+4. The test tries to test everything at once. It’s trying to test both the negative filtering and the sorting functionality. It would be more readable to break this into multiple tests.
+5. The test inputs aren’t simple. In particular, the example score -99998.7 is “loud” and gets your attention even though there isn’t any significance to that specific value. A simpler negative value would suffice.
+6. The test inputs don’t thoroughly exercise the code. For example, it doesn’t test when the score is 0. (Would that document be filtered or not?)
+7. It doesn’t test other extreme inputs, such as an empty input vector, a very large vector, or one with duplicate scores.
+8. The name Test1() is meaningless—the name should describe the function or situation being tested.
+
+
+<a name="ch14_friend"></a>
+## Test-Friendly Development
+
+If you write your code knowing you’ll be writing a test for it later, a funny thing happens: you start designing your code so that it’s easy to test!
+
+Fortunately, coding this way also means that you create better code in general. Test-friendly designs often lead naturally to well- organized code, with separate parts to do separate things.
+
+#### TEST-DRIVEN DEVELOPMENT
+
+* Test-driven development (TDD) is a programming style where you write the tests before you write the real code. TDD proponents believe this process profoundly improves the quality of the nontest code, much more so than if you write the tests after writing the code.
+* This is a hotly debated topic that we won’t get into. At the very least, we’ve found that just keeping testing in mind while writing code helps make the code better.
+* But regardless of whether you employ TDD, the end result is that you have code that tests other code. The goal of this chapter is to help you make your tests easier to read and write.
+
+
+Generally, if you’re designing your code and realize, Hmm, this is going to be a nightmare to test, that’s a good reason to stop and rethink the design. Table shows some typical testing and design problems.
+
+Characteristic | Testability problem | Design problem
+--- | --- | ---
+Use of global variables | All the global state needs to reset for every test (otherwise, different tests can interfere with each other). | Hard to understand which functions have what side effects. Can’t think about each function in isolation; need to consider the whole program to understand if everything works.
+Code depends on a lot of external components | It’s harder to write any tests because there’s so much scaffolding to set up first. Tests are less fun to write, so people avoid writing tests. | System is more likely to fail when one of the dependencies fails. It's harder to understand what impact any given change might make. It's harder to refactor classes. System has more failure modes and recovery paths to think about.
+Code has nondeterministic behavior | Tests are flaky and unreliable. Tests that occasionally fail end up being ignored. | The program is more likely to have race conditions or other nonreproducible bugs. The program is harder to reason about. Bugs in production are very difficult to track down and fix.
+
+
+On the other hand, if you have a design that's easy to write tests for, that’s a good sign. Table lists some beneficial testing and design characteristics.
+
+Characteristic | Testability benefit | Design benefit
+--- | --- | ---
+Classes have little or no internal state | Tests are easier to write because there is less setup needed to test a method and less hidden state to inspect. | Classes with less state are simpler and easier to understand.
+Classes/functions only do one thing | Fewer test cases are required to fully test it. | Smaller/simpler components are more modular, and the system is generally more decoupled.
+Classes depend on few other classes; high decoupling | Each class can be tested independently (much easier than testing multiple classes at once). | System can be developed in parallel. Classes can be easily modified or removed without disrupting the rest of the system.
+Functions have simple, well-defined interfaces | There are well-defined behaviors to test for. Simple interfaces take less work to test. | Interfaces are easier for coders to learn and are more likely to be reused.
+
+<a name="ch14_far"></a>
+## Going Too Far
+
+It’s also possible to focus too much on testing. Here are some examples:
+
+* **Sacrificing the readability of your real code, for the sake of enabling tests.**
+
+    Designing your real code to be testable should be a win-win situation: your real code becomes simpler and more decoupled, and your tests are easy to write. But if you have to insert lots of ugly plumbing into your real code just so you can test it, something’s wrong.
+
+* **Being obsessive about 100% test coverage.**
+
+    Testing the first 90% of your code is often less work than testing that last 10%. That last 10% might involve user interface, or dumb error cases, where the cost of the bug isn’t really that high and the effort to test it just isn’t worth it.
+
+    The truth is that you’ll never get 100% coverage anyhow. If it’s not a missed bug, it might be a missed feature or you might not realize that the spec should be changed.
+
+    Depending on how costly your bugs are, there’s a sweet spot of how much development time it’s worth spending on test code. If you’re building a website prototype, it might not be worth writing any test code at all. On the other hand, if you’re writing a controller for a spaceship or medical device, testing is probably your main focus.
+
+* **Letting testing get in the way of product development.**
+
+    We’ve seen situations where testing, which should be just one aspect of a project, dominates the whole project. Testing becomes some sort of god to be appeased, and coders just go through the rituals and motions without realizing that their precious engineering time might be better spent elsewhere.
+
+
+<a name="ch14_summary"></a>
+## Summary
+
+In test code, readability is still very important. If your tests are very readable, they will in turn be very writable, so people will add more of them. Also, if you design your real code to be easy to test, your code will have a better design overall.
+
+Here are specific points on how to improve your tests:
+
+* The top level of each test should be as concise as possible; ideally, each test input/output can be described in one line of code.
+* If your test fails, it should emit an error message that makes the bug easy to track down and fix.
+* Use the simplest test inputs that completely exercise your code.
+* Give your test functions a fully descriptive name so it’s clear what each is testing. Instead of Test1(), use a name like `Test_<FunctionName>_<Situation>`.
+
+And above all, make it easy to modify and add new tests.
+
+
+---
+
+<a name="ch15"></a>
+# Chapter 15: DESIGNING AND IMPLEMENTING A “MINUTE/HOUR COUNTER”
+
+Let’s take a look at a data structure used in real production code: a “minute/hour counter.” We’ll take you through the natural thought process an engineer might go through, first trying to solve this problem and then improving its performance and adding features. Most important, we’ll also be trying to keep the code easy to read, using principles from throughout this book. We might take some wrong turns along the way or make other mistakes. See if you can follow along and catch them.
+
+
+<a name="ch15_prob"></a>
+## The Problem
+
+We need to keep track of how many bytes a web server has transferred over the past minute and over the past hour. Here’s an illustration of how these totals are maintained:
+
+![ch15](https://github.com/byam/Programming-Notes/blob/master/readable_code-note/ch15.png)
+
+It’s a fairly straightforward problem, but as you’ll see, solving it efficiently is an interesting challenge. Let’s start by defining the class interface.
+
+
+<a name="ch15_def"></a>
+## Defining the Class Interface
+
+Here is our first version of the class interface in C++:
+```c++
+class MinuteHourCounter {
+    public:
+        // Add a count
+        void Count(int num_bytes);
+
+        // Return the count over this minute int MinuteCount();
+        // Return the count over this hour
+        int HourCount();
+};
+```
+
+Before we implement this class, let’s go through the names and comments to see if there’s anything we want to change.
+
+
+#### Improving the Names
+
+The class name MinuteHourCounter is pretty good. It’s very specific, concrete, and easy to say.
+
+Given the class name, the method names MinuteCount() and HourCount() are also reasonable. You might have called them GetMinuteCount() and GetHourCount(), but this doesn’t help anything. As we said in [Chapter 3, Names That Can’t Be Misconstrued](https://github.com/byam/Programming-Notes/blob/master/readable_code-note/part1.mdown#name_miss), “get” implies “lightweight accessor” to many people. And as you’ll see, the implementation won’t be lightweight, so it’s best to leave “get” out.
+
+The method name Count() is problematic, though. We asked our coworkers what they thought Count() would do, and some thought it meant “return the total number of counts over all time.” The name is a bit counterintuitive (no pun intended). The problem is that Count is both a noun and a verb and could mean either “I want a count of the number of samples you have seen” or “I want you to count this sample.”
+
+Here are alternative names to consider in place of Count():
+* Increment()
+* Observe()
+* Record()
+* Add()
+
+Increment() is misleading because it implies that there’s a value that only increases. (In our case, the hour count fluctuates over time.)
+
+Observe() is okay, but a little vague.
+
+Record() also has the noun/verb problem, so that’s no good.
+
+Add() is interesting because it can either mean “add this numerically” or “add to a list of data”— in our case, it’s a little of both, so that works. So we’ll rename the method to void Add(int num_bytes).
+
+But the argument name `num_bytes` is too specific. Yes, our primary use case is for counting bytes, but MinuteHourCounter doesn’t need to know this. Someone else might use this class to count queries or database transactions. We could use a more generic name like delta, but the term delta is often used in places where the value can be negative, which we don’t want. The name count should work—it’s simple, generic, and implies “nonnegative.” Also, it lets us sneak in the word “count” in a less ambiguous context.
+
+#### Improving the Comments
+
+Here’s the class interface we have so far:
+
+```c++
+class MinuteHourCounter {
+    public:
+
+    // Add a count
+    void Add(int count);
+
+    // Return the count over this minute
+    int MinuteCount();
+
+    // Return the count over this hour
+    int HourCount();
+};
+```
+
+
+Let’s go through each of these method comments and improve them. Consider the first one:
+```c++
+// Add a count
+void Add(int count);
+```
+This comment is completely redundant now—it should be either removed or improved. Here’s an improved version:
+```c++
+// Add a new data point (count >= 0).
+// For the next minute, MinuteCount() will be larger by +count.
+// For the next hour, HourCount() will be larger by +count. void Add(int count);
+```
+
+Now let’s consider the comment for MinuteCount():
+```c++
+// Return the count over this minute
+int MinuteCount();
+```
+
+When we asked our coworkers what this comment meant, there were two conflicting interpretations:
+
+1. Return the count during this current clock-minute, such as 12:13 p.m.
+2. Return the count during the past 60 seconds, regardless of clock-minute boundaries.
+
+The second interpretation is how it actually works. So let’s clear up this confusion with language that is more precise and detailed:
+```c++
+// Return the accumulated count over the past 60 seconds.
+int MinuteCount();
+```
+(Similarly, we should improve the comment for HourCount().)
+
+Here is the class definition with all the changes so far, along with a class-level comment:
+```c++
+// Track the cumulative counts over the past minute and over the past hour.
+// Useful, for example, to track recent bandwidth usage.
+class MinuteHourCounter {
+    // Add a new data point (count >= 0).
+    // For the next minute, MinuteCount() will be larger by +count.
+    // For the next hour, HourCount() will be larger by +count.
+    void Add(int count);
+
+    // Return the accumulated count over the past 60 seconds.
+    int MinuteCount();
+
+    // Return the accumulated count over the past 3600 seconds.
+    int HourCount();
+};
+```
+
+#### GETTING AN OUTSIDE PERSPECTIVE
+
+You may have noticed that there were already a couple cases where we ran things by our coworkers. Asking for an outside perspective is a great way to test if your code is “user-friendly.” Try to be open to their first impressions, because other people may come to the same conclusions. And those “other people” may include you in six months.
+
+<a name="ch15_at1"></a>
+## Attempt 1: A Naive Solution
+
+Let’s move on to solving the problem. We’ll start with a straightforward solution: just keep a list of timestamped “events”:
+
+```c++
+class MinuteHourCounter {
+    struct Event {
+        Event(int count, time_t time) : count(count), time(time) {};
+        int count;
+        time_t time;
+    };
+
+    list<Event> events;
+
+  public:
+    void Add(int count) {
+        events.push_back(Event(count, time()));
+    }
+    ...
+};
+```
+
+We can then count over the most recent events as needed:
+
+```c++
+class MinuteHourCounter {
+    ...
+
+    int MinuteCount() {
+        int count = 0;
+        const time_t now_secs = time();
+        for (list<Event>::reverse_iterator i = events.rbegin();
+            i != events.rend() && i->time > now_secs - 60; ++i) {
+            count += i->count;
+        }
+        return count;
+    }
+
+    int HourCount() {
+        int count = 0;
+        const time_t now_secs = time();
+        for (list<Event>::reverse_iterator i = events.rbegin();
+            i != events.rend() && i->time > now_secs - 3600; ++i) {
+                count += i->count;
+        }
+        return count;
+    }
+};
+```
+
+#### Is the Code Easy to Understand?
+
+Although this solution is “correct,” there are a couple readability problems:
+
+* **The for loops are a bit of a mouthful.**
+
+    Most readers slow down significantly while they’re reading this part of the code (at least they should, if they’re making sure there aren’t any bugs).
+
+* **MinuteCount() and HourCount() are almost identical.**
+
+    It would make the code smaller if they could share the duplicated code. This detail is especially important because the redundant code is relatively complex. (Better to have all the difficult code confined to one place.)
+
+
+
+#### An Easier-to-Read Version
+
+The code for MinuteCount() and HourCount() differs by only a single constant (60 vs. 3600). The obvious refactoring is to introduce a helper method to handle both cases:
+
+```c++
+class MinuteHourCounter {
+    list<Event> events;
+
+    int CountSince(time_t cutoff) {
+        int count = 0;
+        for (list<Event>::reverse_iterator rit = events.rbegin();
+            rit != events.rend(); ++rit) {
+                if (rit->time <= cutoff) {
+                    break;
+                }
+                count += rit->count;
+            }
+            return count;
+        }
+
+      public:
+        void Add(int count) {
+            events.push_back(Event(count, time()));
+        }
+
+        int MinuteCount() {
+            return CountSince(time() - 60);
+
+        }
+
+        int HourCount() {
+            return CountSince(time() - 3600);
+        }
+};
+```
+
+
+#### Performance Problems
+
+Although we’ve improved how the code looks, this design has two serious performance problems:
+
+1. **It just keeps growing and growing.**
+
+    The class holds on to all of the events it’s ever seen—it uses an unbounded amount of memory! Ideally, the MinuteHourCounter should automatically delete events that are older than an hour because they’re no longer needed.
+
+2. **MinuteCount() and HourCount() are too slow.**
+
+    The method CountSince() takes O(n) time, where n is the number of data points in the relevant time window. Imagine a high-performance server that called Add() hundreds of times per second. Every call to HourCount() would have to count through a million data points! Ideally, the MinuteHourCounter should keep separate minute_count and hour_count variables that are kept up date with each call to Add().
+
+
+<a name="ch15_at2"></a>
+## Attempt 2: Conveyor Belt Design
+
+We need a design that solves both of the previous problems:
+
+1. Delete data we no longer need.
+2. Keep precomputed minute_count and hour_count totals up to date.
+
+Here’s how we’ll do it: we’ll use our list like a conveyor belt. When new data arrives on one end, we add to our total. And when the data is too old, it “falls off” the other end, and we subtract from our total.
+
+There are a couple ways we could implement this conveyor belt design. One way is to maintain two independent lists, one for events in the past minute, one for those in the past hour. When a new event comes in, add a copy to both lists.
+
+![ch15ap21](https://github.com/byam/Programming-Notes/blob/master/readable_code-note/ch15ap21.png)
+
+This way is pretty simple, but it’s inefficient because it makes two copies of every event.
+
+Another way is to maintain two lists, where events initially go into the first list (the “last minute events”), and then this feeds into the second list (the “last hour [but not last minute] events”).
+
+
+![ch15ap22](https://github.com/byam/Programming-Notes/blob/master/readable_code-note/ch15ap22.png)
+
+This “two-stage” conveyor belt design seems more efficient, so let’s implement this one.
+
+#### Implementing the Two-Stage Conveyor Belt Design
+
+Let’s begin by listing the members of our class:
+
+```python
+class MinuteHourCounter {
+    list<Event> minute_events;
+    list<Event> hour_events;  // only contains elements NOT in minute_events
+    int minute_count;
+    int hour_count;  // counts ALL events over past hour, including past minute
+};
+```
+
+The crux of this conveyor belt design is to be able to “shift” the events as time goes by, so that events move from minute_events to hour_events, and minute_count and hour_count get updated accordingly. To do this, we’ll create a helper method named ShiftOldEvents(). Once we have that method, the rest of the class is fairly easy to implement:
+
+```c++
+void Add(int count) {
+    const time_t now_secs = time();
+    ShiftOldEvents(now_secs);
+
+    // Feed into the minute list (not into the hour list--that will happen later)
+    minute_events.push_back(Event(count, now_secs));
+
+    minute_count += count;
+    hour_count += count;
+}
+
+int MinuteCount() {
+    ShiftOldEvents(time());
+    return minute_count;
+}
+
+int HourCount() {
+    ShiftOldEvents(time());
+    return hour_count;
+}
+```
+
+Clearly, we’ve deferred all the dirty work to ShiftOldEvents():
+```c++
+// Find and delete old events, and decrease hour_count and minute_count accordingly.
+void ShiftOldEvents(time_t now_secs) {
+    const int minute_ago = now_secs - 60;
+    const int hour_ago = now_secs - 3600;
+
+    // Move events more than one minute old from 'minute_events' into 'hour_events'
+    // (Events older than one hour will be removed in the second loop.)
+    while (!minute_events.empty() && minute_events.front().time <= minute_ago) {
+        hour_events.push_back(minute_events.front());
+
+        minute_count -= minute_events.front().count;
+        minute_events.pop_front();
+    }
+
+    // Remove events more than one hour old from 'hour_events'
+    while (!hour_events.empty() && hour_events.front().time <= hour_ago) {
+        hour_count -= hour_events.front().count;
+        hour_events.pop_front();
+    }
+}
+```
+
+
+#### Are We Done?
+
+We’ve solved the two performance concerns we mentioned earlier, and our solution works. For many applications, this solution would be good enough. But there are a number of deficiencies, too.
+
+First, the design is very inflexible. Suppose we wanted to keep counts over the past 24 hours. That would require making a lot of changes to the code. And as you probably noticed, ShiftOldEvents() is a pretty dense function, with subtle interaction between the minute and hour data.
+
+Second, this class has a pretty big memory footprint. Suppose you had a high-traffic server calling Add() 100 times per second. Because we hold on to all data over the past hour, this code would end up requiring about 5MB of memory.
+
+In general, the more frequently Add() is called, the more memory we use. In a production environment, libraries that use a large, unpredictable amount of memory aren’t good. Ideally, the MinuteHourCounter would use a fixed amount of memory no matter how often Add() is called.
+
+<a name="ch15_at3"></a>
+## Attempt 3: A Time-Bucketed Design
+
+You may not have noticed, but both of the previous implementations had a small bug. We used time_t to store the timestamp, which stores an integral number of seconds. Because of this rounding, MinuteCount() actually returns somewhere between 59 and 60 seconds worth of data, depending on when exactly you call it.
+
+For example, if an event happens at time = 0.99 seconds, that time will get rounded to t=0 seconds. And if you call MinuteCount() at time = 60.1 seconds, it will return the total for events where t=1,2,3,...60. So that first event will be missed, even though it’s technically less than a minute ago.
+
+On average, MinuteCount() will return 59.5 seconds worth of data. And HourCount() will return 3599.5 seconds worth of data (a negligible error).
+
+We could fix all this by using a time with subsecond granularity. But interestingly, most applications using a MinuteHourCounter don’t need that level of accuracy in the first place. We will exploit this fact to design a new MinuteHourCounter that’s much faster and uses less space. It’s a trade-off of precision for performance that will be well worth it.
+
+The key idea is to bucket all the events within a small time window together, and summarize those events with a single total. For instance, the events over the past minute could be inserted into 60 discrete buckets, each 1 second wide. The events over the past hour could also be inserted into 60 discrete buckets, each 1 minute wide.
+
+
+![ch15ap23](https://github.com/byam/Programming-Notes/blob/master/readable_code-note/ch15ap23.png)
+
+Using the buckets as shown, the methods MinuteCount() and HourCount() will be accurate to 1 part per 60, which is reasonable.*
+
+If more precision is needed, more buckets can be used in exchange for a larger memory footprint. But the important thing is that this design has a fixed, predictable memory usage.
+
+
+#### Implementing the Time-Bucketed Design
+
+For starters, let’s create a separate class to keep track of the counts for a single time span (like the last hour). We’ll call it a TrailingBucketCounter. It’s essentially a generic version of MinuteHourCounter that handles only one time span. Here’s the interface:
+```c++
+// A class that keeps counts for the past N buckets of time.
+class TrailingBucketCounter {
+    public:
+    // Example: TrailingBucketCounter(30, 60) tracks the last 30 minute-buckets of time.
+    TrailingBucketCounter(int num_buckets, int secs_per_bucket);
+
+    void Add(int count, time_t now);
+
+    // Return the total count over the last num_buckets worth of time
+    int TrailingCount(time_t now);
+};
+```
+
+You might wonder why Add() and TrailingCount() require the current time (time_t now) as an argument—wouldn’t it be easier if those methods just computed the current time() themselves?
+
+
+Although it may seem strange, passing in the current time has a couple benefits. First, it makes TrailingBucketCounter a “clockless” class, which in general is easier to test and less bug-prone. Second, it keeps all the calls to time() inside MinuteHourCounter. With time-sensitive systems, it helps if you can put all the calls to get the time in one place.
+
+Assuming TrailingBucketCounter was already implemented, the MinuteHourCounter is easy to implement:
+
+```c++
+class MinuteHourCounter {
+    TrailingBucketCounter minute_counts;
+    TrailingBucketCounter hour_counts;
+
+  public:
+    MinuteHourCounter() :
+        minute_counts(/* num_buckets = */ 60, /* secs_per_bucket = */ 1),
+        hour_counts(  /* num_buckets = */ 60, /* secs_per_bucket = */ 60) {
+    }
+
+    void Add(int count) {
+        time_t now = time();
+        minute_counts.Add(count, now);
+        hour_counts.Add(count, now);
+    }
+
+    int MinuteCount() {
+        time_t now = time();
+        return minute_counts.TrailingCount(now);
+    }
+
+    int HourCount() {
+        time_t now = time();
+        return hour_counts.TrailingCount(now);
+    }
+};
+```
+
+
+This code is much more readable, and also more flexible—if we wanted to increase the number of buckets (to improve precision but increase memory usage), that would be easy to do.
+
+#### Implementing TrailingBucketCounter
+
+Now all that’s left is to implement the TrailingBucketCounter class. Once again, we’re going to create a helper class to break down this problem further.
+
+We’ll create a data structure called ConveyorQueue whose job is to deal with the underlying counts and their totals. The TrailingBucketCounter class can focus on the task of moving the ConveyorQueue according to how much time has elapsed.
+
+Here is the ConveyorQueue interface:
+```c++
+// A queue with a maximum number of slots, where old data "falls off" the end.
+class ConveyorQueue {
+    ConveyorQueue(int max_items);
+
+    // Increment the value at the back of the queue.
+    void AddToBack(int count);
+
+    // Each value in the queue is shifted forward by 'num_shifted'.
+    // New items are initialized to 0.
+    // Oldest items will be removed so there are <= max_items.
+    void Shift(int num_shifted);
+
+    // Return the total value of all items currently in the queue.
+    int TotalSum();
+};
+```
+
+
+Assuming this class was implemented, look how easy the TrailingBucketCounter is to implement:
+
+```c++
+class TrailingBucketCounter {
+    ConveyorQueue buckets;
+    const int secs_per_bucket;
+    time_t last_update_time;  // the last time Update() was called
+
+    // Calculate how many buckets of time have passed and Shift() accordingly.
+    void Update(time_t now) {
+        int current_bucket = now / secs_per_bucket;
+        int last_update_bucket = last_update_time / secs_per_bucket;
+
+        buckets.Shift(current_bucket - last_update_bucket);
+        last_update_time = now;
+    }
+
+  public:
+    TrailingBucketCounter(int num_buckets, int secs_per_bucket) :
+        buckets(num_buckets),
+        secs_per_bucket(secs_per_bucket) {
+    }
+
+    void Add(int count, time_t now) {
+        Update(now);
+        buckets.AddToBack(count);
+    }
+
+    int TrailingCount(time_t now) {
+        Update(now);
+        return buckets.TotalSum();
+    }
+};
+```
+
+
+#### Implementing ConveyorQueue
+
+Now all that’s left is to implement the ConveyorQueue class:
+
+```c++
+// A queue with a maximum number of slots, where old data gets shifted off the end.
+class ConveyorQueue {
+    queue<int> q;
+    int max_items;
+    int total_sum;  // sum of all items in q
+
+  public:
+    ConveyorQueue(int max_items) : max_items(max_items), total_sum(0) {
+    }
+
+    int TotalSum() {
+        return total_sum;
+    }
+
+    void Shift(int num_shifted) {
+        // In case too many items shifted, just clear the queue.
+        if (num_shifted >= max_items) {
+            q = queue<int>();  // clear the queue
+            total_sum = 0;
+            return;
+        }
+
+        // Push all the needed zeros.
+        while (num_shifted > 0) {
+            q.push(0);
+            num_shifted--;
+        }
+
+        // Let all the excess items fall off.
+        while (q.size() > max_items) {
+            total_sum -= q.front();
+            q.pop();
+        }
+    }
+
+    void AddToBack(int count) {
+        if (q.empty()) Shift(1); // Make sure q has at least 1 item.
+        q.back() += count;
+        total_sum += count;
+    }
+};
+```
+
+
+Now we’re done! We have a MinuteHourCounter that’s fast and memory-efficient, plus a more flexible TrailingBucketCounter that’s easily reusable. For instance, it would be pretty easy to create a more versatile RecentCounter that can count a wide range of intervals, such as the last day or last ten minutes.
+
+
+<a name="ch15_comp"></a>
+## Comparing the Three Solutions
+
+Let’s compare the solutions we’ve looked at in this chapter. The following table shows the code size and performance stats (assuming a high-traffic use case of 100 Add()/sec):
+
+Solution | Lines of code | Cost per HourCount() | Memory use | Error in HourCount()
+--- | --- | --- | --- | ---
+Naive solution | 33 | O(#events-per-hour) (~3.6 million) | unbounded | 1 part per 3600
+Conveyor belt design | 55 | O(1) | O(#events-per-hour) (~5MB) | 1 part per 3600
+Time-bucketed design (60 buckets) | 98 | O(1) | O(#buckets) (~500 bytes) | 1 part per 60
+
+Notice that the total amount of code for our final three-class solution is more than for any of the other attempts. However, the performance is far superior, and the design is more flexible. Also, each class individually is much easier to read. This is always a positive change: having 100 lines that are all easy to read is better than 50 lines that aren’t.
+
+Sometimes, breaking a problem into multiple classes can introduce interclass complexity (that a one-class solution wouldn’t have). In this case, though, there’s a simple “linear” chain of use from one class to the next, and only one of the classes is exposed to end users. Overall, the benefits of breaking this problem down make this a win.
+
+<a name="ch15_summary"></a>
+## Summary
+
+Let’s review the steps we went through to get to the final MinuteHourCounter design. The process is typical of how other pieces of code evolve.
+
+First, we started by coding a naive solution. This helped us realize two design challenges: speed and memory use.
+
+Next, we tried a “conveyor belt” design. This design improved the speed and memory use but still wasn’t good enough for high-performance applications. Also, this design was very inflexible: adapting the code to handle other time intervals would be a lot of work.
+
+Our final design solved the previous problems by breaking things down into subproblems. Here are the three classes we created, in bottom-up order, and the subproblem each one solved:
+
+ConveyorQueue
+
+    A maximum-length queue that can be “shifted” and maintains its total sum
+
+TrailingBucketCounter
+
+    Moves the ConveyorQueue according to how much time has elapsed and maintains the count of a single (latest) time interval, with a given precision
+
+MinuteHourCounter
+
+    Simply contains two TrailingBucketCounters, one for the minute count and one for the hour count
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
