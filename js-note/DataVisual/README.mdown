@@ -6,38 +6,38 @@
 
 The chapters that follow cover a variety of visualization techniques and the JavaScript libraries that we can use to implement them.
 
-* [**Chapter 1**](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/DataVisual/ch1.mwdon)
+* [**Chapter 1**](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/DataVisual/ch1.mdown)
 
     Begins with the most basic visualizations—static charts and plots—using the Flotr2 library.
 
-* [**Chapter 2**](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/DataVisual/ch2.mwdon)
+* [**Chapter 2**](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/DataVisual/ch2.mdown)
 
     Adds interactivity to the visualizations, giving users the chance to select content, zoom in, and track values. The chapter also shows how to retrieve data for visualizations directly from the Web. For variety, its examples use the Flot library, which is based on jQuery.
 
-* [**Chapter 3**](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/DataVisual/ch3.mwdon)
+* [**Chapter 3**](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/DataVisual/ch3.mdown)
 
     Looks at integrating multiple visualizations and with other content on a web page; it uses the jQuery sparklines library.
 
-* [**Chapter 4**](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/DataVisual/ch4.mwdon)
+* [**Chapter 4**](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/DataVisual/ch4.mdown)
 
     We consider visualizations other than standard charts and plots, including tree maps, heat maps, network graphs, and word clouds. Each example focuses on a particular JavaScript library designed specifically for the visualization type.
 
-* [**Chapter 5**](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/DataVisual/ch5.mwdon)
+* [**Chapter 5**](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/DataVisual/ch5.mdown)
 
     Covers time-based visualizations. It looks at several ways to visual- ize timelines, including traditional libraries; pure HTML, CSS, and JavaScript; and full-featured web components.
 
-* [**Chapter 6**](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/DataVisual/ch6.mwdon)
+* [**Chapter 6**](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/DataVisual/ch6.mdown)
 
     We consider geographic data as we look at different ways to incorporate maps into our visualizations.
 
-* [**Chapter 7**](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/DataVisual/ch7.mwdon)
+* [**Chapter 7**](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/DataVisual/ch7.mdown)
 
     Introduces the powerful D3.js library, a flexible and full-featured toolkit for building custom visualizations of almost any type.
 
-* [**Chapter 8**](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/DataVisual/ch8.mwdon)
+* [**Chapter 8**](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/DataVisual/ch8.mdown)
 
     We consider other aspects of web-based visualiza- tions. This chapter shows off the Underscore.js library, which makes it easy to prepare the data that drives our visualizations.
 
-* [**Chapters 9 and 10**](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/DataVisual/ch9.mwdon)
+* [**Chapters 9 and 10**](https://github.com/byam/Byam-Programming-Notes/blob/master/js-note/DataVisual/ch9.mdown)
 
     Walk through the development of a complete, single-page web application that relies on data visualization. Here we’ll see how to use modern development tools such as Yeoman and the Backbone.js library.
