@@ -1,0 +1,345 @@
+# Chapter 2: Making Charts Interactive
+
+In this chapter, we’ll use the [Flot library](http://www.flotcharts.org/), which is based on jQuery and features exceptionally strong support for interactive and real-time charts.
+
+* [How to let users select the content for a chart](#ch2_select)
+* [How to let users zoom into a chart to see more details](#ch2_zoom)
+* [How to make a chart respond to user mouse movements](#ch2_mouse)
+* [How to dynamically get data for a chart using an AJAX service](#ch2_ajax)
+
+----
+
+<a name="ch2_select"></a>
+# Selecting Chart Content
+
+Interactive visualizations usually require more thought than simple, static charts. Not only must the original presentation of data be effective, but the way the user controls the presentation and the way the presentation responds must be effective as well. It usually helps to consider each of those requirements explicitly.
+
+1. Make sure the initial, static presentation shows the data effectively.
+2. Add any user controls to the page and ensure they make sense for the
+visualization.
+3. Add the code that makes the controls work.
+
+## Simple Line Chart (using jQuery)
+
+#### HTML Skeleton
+
+*index.html:*
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+  </head>
+
+  <body>
+
+    <!-- Chart is here -->
+    <div id="chart" style="width:600px;height:400px;"></div>
+
+    <!--[if lt IE 9]><script src="js/excanvas.min.js"></script><![endif]-->
+
+    <!-- jQuery CDN -->
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+
+    <!-- Flot CDN -->
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/flot/0.7/jquery.flot.min.js"></script>
+
+    <!-- Data Manipulation -->
+    <script src="js/select_chart.js"></script>
+
+  </body>
+</html>
+```
+
+
+#### Prepare the Data
+
+```js
+var eas = [[1960,0.1558],[1961,0.1547],[1962,0.1574], // Data continues...
+var ecs = [[1960,0.4421],[1961,0.4706],[1962,0.5145], // Data continues...
+var lcn = [[1960,0.0811],[1961,0.0860],[1962,0.0990], // Data continues...
+var mea = [[1968,0.0383],[1969,0.0426],[1970,0.0471], // Data continues...
+var sas = [[1960,0.0478],[1961,0.0383],[1962,0.0389], // Data continues...
+var ssf = [[1960,0.0297],[1961,0.0308],[1962,0.0334], // Data continues...
+```
+
+
+#### Draw the Chart
+
+```js
+$(function () {
+    $.plot($("#chart"), [ eas, ecs, lcn, mea, sas, ssf ]);
+});
+```
+
+![select_chart1](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch2/selecting-content/images/select_chart1.png)
+
+
+
+## Interactive Line Chart
+
+```js
+// adding data series to variables
+var source = [
+    { data: eas, show: true, color: "#FE4C4C", name: "East Asia & Pacific" },
+    { data: ecs, show: true, color: "#B6ED47", name: "Europe & Central Asia" },
+    { data: lcn, show: true, color: "#2D9999", name: "Latin America & Caribbean" },
+    { data: mea, show: true, color: "#A50000", name: "Middle East & North Africa" },
+    { data: sas, show: true, color: "#679A00", name: "South Asia" },
+    { data: ssf, show: true, color: "#006363", name: "Sub-Saharan Africa" }
+];
+
+
+// filtering datas which is "show: true"
+var source_show = $.grep(source, function (obj){ return obj.show; });
+
+// extracts only data & color
+var data_color = $.map(source_show, function(obj){
+    return { data: obj.data, color: obj.color };
+    });
+
+// plotting line chart
+var plotObj = $.plot($("#chart"), data_color);
+
+// Create Checkboxes & Legends
+$.each(source, function(idx, region) {
+    // create checkbox
+    var input = $("<input>").attr("type","checkbox").attr("id","chk-"+idx);
+
+    if (region.show) {
+        $(input).prop("checked",true);
+    }
+
+    // create legend
+    var span = $("<span>").css({
+        "background-color": region.color,
+        "display":          "inline-block",
+        "height":           "0.9em",
+        "width":            "0.9em",
+        "margin-right":     "0.25em",
+    });
+
+    // create label
+    var label = $("<label>").append(input).append(span).append(region.name).append($("<br>"));
+
+    // adding checbox
+    $("#controls").append(label);
+});
+
+
+// Interactive: When Checkbox is clicked
+$("input[id^='chk-']").click(function(ev) {
+    // removing "chk-" prefix
+    var idx = ev.target.id.substr(4);
+
+    // toggle
+    source[idx].show = !source[idx].show;
+
+    // reset data
+    plotObj.setData(
+        $.map(
+            $.grep(source, function (obj) { return obj.show; }),
+            function (obj) { return { data: obj.data, color: obj.color }; }
+        )
+    );
+
+    // redraw
+    plotObj.draw();
+})
+```
+
+![select_chart2](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch2/selecting-content/images/select_chart2.png)
+
+
+----
+
+<a name="ch2_zoom"></a>
+# Zooming In on Charts
+
+Although the Flot library in its most basic form does not support zooming, there are at least two library extensions that add this feature: the **selection plug-in** and the **navigation plug-in**.
+
+The navigation plug-in acts a bit like Google Maps. It adds a control that looks like a compass to one corner of the plot and gives users arrows and buttons to pan or zoom the display. This interface is not especially effective for charts, however. Users cannot control exactly how much the chart pans or zooms, which makes it difficult for them to anticipate the effect of an action.
+
+The selection plug-in provides a much better interface. Users simply drag their mouse across the area of the chart they want to zoom in on. The effect of this gesture is more intuitive, and users can be as precise as they like in those actions. The plug-in does have one significant downside, however: it doesn’t support touch interfaces.
+
+#### Prepare the Page
+
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+  </head>
+
+  <body>
+
+    <!-- Our Chart comes here -->
+    <div id='chart' style="width:500px;height:333px;"></div>
+
+    <!--[if lt IE 9]><script src="js/excanvas.min.js"></script><![endif]-->
+
+    <!-- jQuery CDN -->
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+
+    <!-- Flot CDN -->
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/flot/0.7/jquery.flot.min.js"></script>
+
+    <!-- Selection Plug in -->
+    <script src="js/jquery.flot.selection.js"></script>
+
+    <!-- Data Manipulation -->
+    <script src="js/zoom_chart.js"></script>
+
+  </body>
+</html>
+```
+
+Download: [`jquery.flot.selection.js`](https://github.com/sathomas/jsDataV.is-source/blob/master/ch2/zooming/js/jquery.flot.selection.js)
+
+## Simple Line Chart
+
+#### Prepare the Data
+
+```js
+var eas = [[1960,0.1558],[1961,0.1547],[1962,0.1574], // Data continues...
+var ecs = [[1960,0.4421],[1961,0.4706],[1962,0.5145], // Data continues...
+var lcn = [[1960,0.0811],[1961,0.0860],[1962,0.0990], // Data continues...
+var mea = [[1968,0.0383],[1969,0.0426],[1970,0.0471], // Data continues...
+var sas = [[1960,0.0478],[1961,0.0383],[1962,0.0389], // Data continues...
+var ssf = [[1960,0.0297],[1961,0.0308],[1962,0.0334], // Data continues...
+```
+
+
+#### Draw the Char
+
+```js
+$.plot(
+    // HTML element contain the chart
+    $("#chart"),
+
+    // data as an array of data series
+    [
+        { data: eas, label: "East Asia & Pacific" },
+        { data: ecs, label: "Europe & Central Asia" },
+        { data: lcn, label: "Latin America & Caribbean" },
+        { data: mea, label: "Middle East & North Africa" },
+        { data: sas, label: "South Asia" },
+        { data: ssf, label: "Sub-Saharan Africa" }
+    ],
+
+    // specifies options for the plot
+    {legend: {position: "nw"}}
+);
+```
+
+![zoom_chart1](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch2/zooming/images/zoom_chart1.png)
+
+
+## Interactive: Zooming Line Chart
+
+The jQuery `.on()` function assigns a function to an arbitrary event.
+Events can be standard JavaScript events such as click, or they can be custom events like the one we’re using.
+
+```js
+// HTML element contain the chart
+var $el = $("#chart");
+
+// data as an array of data series
+var data = [
+        { data: eas, label: "East Asia & Pacific" },
+        { data: ecs, label: "Europe & Central Asia" },
+        { data: lcn, label: "Latin America & Caribbean" },
+        { data: mea, label: "Middle East & North Africa" },
+        { data: sas, label: "South Asia" },
+        { data: ssf, label: "Sub-Saharan Africa" }
+    ];
+
+// specifies options for the plot
+var options = {
+    legend: {position: "nw"},
+    selection: {mode: "xy"}
+};
+
+// Plotting Line Charts
+var plotObj = $.plot($el, data, options);
+
+
+// Prepare to Accept Interaction Events
+$el.on("plotselected", function(ev, ranges) {
+    plotObj = $.plot($el, data,
+        $.extend(true, {}, options, {
+            xaxis: { min: ranges.xaxis.from, max: ranges.xaxis.to },
+            yaxis: { min: ranges.yaxis.from, max: ranges.yaxis.to }
+       })
+    );
+});
+
+
+// reset chart
+$("#unzoom").click(function() {
+    plotObj = $.plot($el, data, options);
+});
+```
+
+
+![zoom_chart2](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch2/zooming/images/zoom_chart2.png)
+
+
+----
+
+
+<a name="ch2_mouse"></a>
+# Tracking Data Values
+
+This example looks at an alternative approach that enables users to see overall trends and specific details at once. To do that, we take advantage of the mouse as an input device.
+
+This approach does have a significant limitation: it works only when the user has a mouse. If you’re considering this technique, be aware that users on touch- screen devices won’t be able to take advantage of the interactive aspect; they’ll see only the static chart.
+
+
+#### Prepare the Data
+
+```js
+var exports = [
+    { label: "East Asia & Pacific",
+       data: [[1960,13.2277],[1961,11.7964], // Data continues...
+    { label: "Europe & Central Asia",
+       data: [[1960,19.6961],[1961,19.4264], // Data continues...
+    { label: "Latin America & Caribbean",
+       data: [[1960,11.6802],[1961,11.3069], // Data continues...
+    { label: "Middle East & North Africa",
+       data: [[1968,31.1954],[1969,31.7533], // Data continues...
+    { label: "North America",
+       data: [[1960,5.9475],[1961,5.9275], // Data continues...
+    { label: "South Asia",
+       data: [[1960,5.7086],[1961,5.5807], // Data continues...
+    { label: "Sub-Saharan Africa",
+       data: [[1960,25.5083],[1961,25.3968], // Data continues...
+];
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+----
+<a name=""></a>
+
+* [How to dynamically get data for a chart using an AJAX service](#ch2_ajax)

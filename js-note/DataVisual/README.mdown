@@ -6,11 +6,11 @@
 
 The chapters that follow cover a variety of visualization techniques and the JavaScript libraries that we can use to implement them.
 
-* [**Chapter 1**](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch1.mdown)
+* [**Chapter 1: Graphing Data**](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch1.mdown)
 
     Begins with the most basic visualizations—static charts and plots—using the Flotr2 library.
 
-* [**Chapter 2**](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch2.mdown)
+* [**Chapter 2: Making Charts Interactive**](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch2.mdown)
 
     Adds interactivity to the visualizations, giving users the chance to select content, zoom in, and track values. The chapter also shows how to retrieve data for visualizations directly from the Web. For variety, its examples use the Flot library, which is based on jQuery.
 
