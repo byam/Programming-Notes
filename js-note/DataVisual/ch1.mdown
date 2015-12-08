@@ -3,12 +3,30 @@
 
 For this chapter we’ll use the [Flotr2 library](http://www.humblesoftware.com/flotr2/). Flotr2 makes it easy to add standard bar charts, line charts, and pie charts to any web page, and it also supports some less common chart types. We’ll take a look at all of these techniques in the examples that follow. Here’s what you’ll learn:
 
-* [How to create a basic bar chart](#ch1_bar)
-* [How to plot continuous data with a line chart](#ch1_line)
-* [How to emphasize fractions with a pie chart](#ch1_pie)
-* [How to plot X/Y data with a scatter chart](#ch1_scatter)
-* [How to show magnitudes of X/Y data with a bubble chart](#ch1_bubble)
-* [How to display multidimensional data with a radar chart](#ch1_radar)
+* [Bar charts](#ch1_bar)
+
+    The workhorse of charts. Effective at showing the change of a quantity over a small number of regular time intervals, or at comparing several different quantities against one another.
+
+* [Line charts](#ch1_line)
+
+    More effective than bar charts when there is a large number of data values to show, or for showing quantities that vary on an irregular schedule.
+
+* [Pie charts](#ch1_pie)
+
+    Often overused but can be effective to highlight the proportion of a single value within a whole.
+
+* [Scatter charts](#ch1_scatter)
+
+    Effective for showing possible relationships between two values.
+
+* [Bubble charts](#ch1_bubble)
+
+    Adds a third value to scatter charts but should be used carefully, as it’s difficult to accurately assess the relative areas of circular regions.
+
+* [Radar charts](#ch1_radar)
+
+    Designed to show several aspects of the subject on one chart. Not as familiar to many users but can be effective for certain special- ized cases.
+
 
 
 ---
@@ -728,16 +746,288 @@ window.onload = function () {
 
 ![scatter_chart3](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch1/scatter-charts/images/scatter_chart3.png)
 
+---
 
-* [How to show magnitudes of X/Y data with a bubble chart](#ch1_bubble)
-* [How to display multidimensional data with a radar chart](#ch1_radar)
+<a name="ch1_bubble"></a>
+# Adding Magnitudes to X/Y Data with a Bubble Chart
 
-
-
-
-
+> If we need to visual- ize three variables, we could use a scatter plot framework for two of the variables and then vary the size of the points according to the third variable. The resulting chart is a bubble chart.
 
 
+## Simple Bubble Chart
+
+*bubble_chart.js:*
+```js
+// Define the Data
+var katrina = [
+    { north: 23.2, west: 75.5, wind:  35 },
+    { north: 24.0, west: 76.4, wind:  35 },
+    { north: 25.2, west: 77.0, wind:  45 },
+    { north: 26.0, west: 77.6, wind:  45 },
+    { north: 26.2, west: 78.7, wind:  50 },
+    { north: 26.1, west: 79.9, wind:  75 },
+    { north: 25.5, west: 80.7, wind:  75 },
+    { north: 25.1, west: 82.2, wind: 100 },
+    { north: 24.8, west: 82.9, wind: 100 },
+    { north: 24.4, west: 84.0, wind: 110 },
+    { north: 24.4, west: 84.6, wind: 115 },
+    { north: 25.1, west: 86.8, wind: 145 },
+    { north: 25.7, west: 87.7, wind: 160 },
+    { north: 26.5, west: 88.6, wind: 175 },
+    { north: 27.9, west: 89.5, wind: 160 },
+    { north: 29.7, west: 89.6, wind: 135 },
+    { north: 30.8, west: 89.6, wind: 105 },
+    { north: 31.9, west: 89.6, wind:  75 },
+    { north: 32.9, west: 88.9, wind:  65 },
+    { north: 34.7, west: 88.4, wind:  50 },
+];
+
+// format the Data
+function get_points(source_array, filter_function) {
+    var result = [];
+    for (var i=0; i<source_array.length; i++) {
+        if ( (typeof filter_function === "undefined")
+            || (typeof filter_function !== "function")
+            || filter_function(source_array[i]) ) {
+               result.push([
+                   source_array[i].west * -1,
+                   source_array[i].north,
+                   source_array[i].wind
+                ]);
+       }
+    }
+    return result;
+}
+
+window.onload = function () {
+    Flotr.draw(
+        document.getElementById("chart"),
+        [{
+            data: get_points(katrina),
+            bubbles: {show:true, baseRadius: 0.3}
+        }]
+     );
+};
+```
+
+![bubble_chart1](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch1/bubble-charts/images/bubble_chart1.png)
+
+
+
+## Add the Background
+
+```js
+Flotr.draw(
+    document.getElementById("chart"),
+    [{
+        data: get_points(katrina),
+        bubbles: {show:true, baseRadius: 0.3}
+    }],
+    {
+        grid: {
+            backgroundImage : "./images/gulf.png",      // <-----
+            horizontalLines : false,
+            verticalLines: false
+        },
+        yaxis: {showLabels: false, min: 23.607, max: 33.657},
+        xaxis: {showLabels: false, min: -94.298, max: -77.586},
+    }
+ );
+```
+
+
+![bubble_chart2](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch1/bubble-charts/images/bubble_chart2.png)
+
+
+
+
+## Colored & Labeled Bubbles
+
+Here’s where we can take advantage of the filter option we included in the data formatting function.
+
+```js
+cat1 = get_points(katrina, function(obs) {
+    return (obs.wind >= 74) && (obs.wind < 95);
+});
+```
+
+
+*bubble_chart.js:*
+```js
+Flotr.draw(
+    document.getElementById("chart"),
+    [
+      {
+        data: get_points(katrina, function(obs) {
+            return (obs.wind < 39);
+        }),
+        color: "#74add1",
+        bubbles: {show:true, baseRadius: 0.3, lineWidth: 1},
+      },
+      {
+        data: get_points(katrina, function(obs) {
+            return (obs.wind >= 39) && (obs.wind < 74);
+        }),
+        color: "#abd9e9",
+        bubbles: {show:true, baseRadius: 0.3, lineWidth: 1},
+      },
+      {
+        data: get_points(katrina, function(obs) {
+            return (obs.wind >= 74) && (obs.wind < 95);
+        }),
+        color: "#ffffbf",
+        label: "Category 1",
+        bubbles: {show:true, baseRadius: 0.3, lineWidth: 1},
+      },
+      {
+        data: get_points(katrina, function(obs) {
+            return (obs.wind >= 95) && (obs.wind < 110);
+        }),
+        color: "#fee090",
+        label: "Category 2",
+        bubbles: {show:true, baseRadius: 0.3, lineWidth: 1},
+      },
+      {
+        data: get_points(katrina, function(obs) {
+            return (obs.wind >= 110) && (obs.wind < 130);
+        }),
+        color: "#fdae61",
+        label: "Category 3",
+        bubbles: {show:true, baseRadius: 0.3, lineWidth: 1},
+      },
+      {
+        data: get_points(katrina, function(obs) {
+            return (obs.wind >= 130) && (obs.wind < 157);
+        }),
+        color: "#f46d43",
+        label: "Category 4",
+        bubbles: {show:true, baseRadius: 0.3, lineWidth: 1},
+      },
+      {
+        data: get_points(katrina, function(obs) {
+            return (obs.wind >= 157);
+        }),
+        color: "#d73027",
+        label: "Category 5",
+        bubbles: {show:true, baseRadius: 0.3, lineWidth: 1},
+      },
+    ],
+    {
+        grid: {
+            backgroundImage : "./images/gulf.png",
+            horizontalLines : false,
+            verticalLines: false
+        },
+        yaxis: {showLabels: false, min: 23.607, max: 33.657},
+        xaxis: {showLabels: false, min: -94.298, max: -77.586},
+
+        // "sw": south west
+        legend: {position: "sw", backgroundOpacity: 0,},
+    }
+ );
+```
+
+
+![bubble_chart3](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch1/bubble-charts/images/bubble_chart3.png)
+
+
+
+
+---
+
+<a name="ch1_radar"></a>
+# Displaying Multidimensional Data with a Radar Chart
+
+Radar charts are most effective when your data has several characteristics:
+
+* You don’t have too many data points to show. Half a dozen data points is about the maximum that a radar chart can accommodate.
+* The data points have multiple dimensions. With two or even three dimen- sions to your data, you would probably be better off with a more tradi- tional chart type. Radar charts come into play with data of four or more dimensions.
+* Each data dimension is a scale that can at least be ranked (from good to bad, say), if not assigned a number outright. Radar charts don’t work well with data dimensions that are merely arbitrary categories (such as political party or nationality).
+
+
+![radar_data](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch1/radar-charts/images/radar_data.png)
+
+
+## Plot Radar Charts
+
+
+
+```js
+// Define the Data
+var players = [
+    { player: "Chris Bosh", points: 17.2, rebounds: 7.9, assists: 1.6,
+      steals: 0.8, blocks: 0.8 },
+    { player: "Shane Battier",  points:  5.4, rebounds: 2.6, assists: 1.2,
+      steals: 1.0, blocks: 0.5 },
+    { player: "LeBron James",   points: 28.0, rebounds: 8.4, assists: 6.1,
+      steals: 1.9, blocks: 0.8 },
+    { player: "Dwyane Wade",    points: 22.3, rebounds: 5.0, assists: 4.5,
+      steals: 1.7, blocks: 1.3 },
+    { player: "Mario Chalmers", points: 10.2, rebounds: 2.9, assists: 3.6,
+      steals: 1.4, blocks: 0.2 }
+];
+
+var team = {
+    points:   98.2,
+    rebounds: 41.3,
+    assists:  19.3,
+    steals:    8.5,
+    blocks:    5.3
+};
+
+
+var get_player = function(name) {
+    for (var i=0; i<players.length; i++) {
+        if (players[i].player === name) return players[i]; }
+}
+
+// Normalizing players data
+// Ex:  LeBron James’s scoring as 28.0
+//      we’ll show it as 29 percent (28.0/98.2)
+var player_data = function(name) {
+    var obj = {}, i = 0;
+    obj.label = name;
+    obj.data = [];
+    for (var key in team) {
+        obj.data.push([i, 100*get_player(name)[key]/team[key]]);
+        i++;
+    };
+    return obj;
+};
+
+
+// Labeling
+var labels = [
+    [0, "Points"],
+    [1, "Rebounds"],
+    [2, "Assists"],
+    [3, "Steals"],
+    [4, "Blocks"]
+];
+
+
+window.onload = function () {
+    Flotr.draw(document.getElementById("chart"),
+        [
+            player_data("Chris Bosh"),
+            player_data("Shane Battier"),
+            player_data("LeBron James"),
+            player_data("Dwyane Wade"),
+            player_data("Mario Chalmers")
+        ],
+        {
+            title:
+                "2011/12 Miami Heat Starting Lineup — Contribution to Team Total",
+            radar: { show: true },
+            grid: { circular: true, },
+            xaxis: { ticks: labels, },
+            yaxis: { showLabels: false, min:0, max: 33, }
+        }
+    );
+};
+```
+
+![radar_chart1](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch1/radar-charts/images/radar_chart1.png)
 
 
 
