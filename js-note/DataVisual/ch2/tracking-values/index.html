@@ -7,13 +7,22 @@
 
   <body>
 
-  <div id='chart'></div>
-
+    <!-- Our Chart comes here -->
+    <div id="chart-wrapper" style="position:relative;margin-left:20px;">
+        <div id='marker' style="position:absolute;z-index:1;display:none;width:1px;border-left: 1px solid black;"></div>
+        <div id='charts' style="float:left;"></div>
+        <div id='chart-legends' style="float:left;"></div>
+    </div>
     <!--[if lt IE 9]><script src="js/excanvas.min.js"></script><![endif]-->
+
+    <!-- jQuery CDN -->
     <script src="http://cdnjs.cloudflare.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+
+    <!-- Flot CDN -->
     <script src="http://cdnjs.cloudflare.com/ajax/libs/flot/0.7/jquery.flot.min.js"></script>
 
-    <script src="js/mouse_chart.js"></script>
+    <!-- Data Manipulation -->
+    <script src="js/track_chart.js"></script>
 
   </body>
 </html>

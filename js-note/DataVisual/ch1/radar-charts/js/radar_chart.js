@@ -1,13 +1,13 @@
 var players = [
-    { player: "Chris Bosh", points: 17.2, rebounds: 7.9, assists: 1.6,
+    { player: "Son", points: 17.2, rebounds: 7.9, assists: 1.6,
       steals: 0.8, blocks: 0.8 },
-    { player: "Shane Battier",  points:  5.4, rebounds: 2.6, assists: 1.2,
+    { player: "Grandpa",  points:  5.4, rebounds: 2.6, assists: 1.2,
       steals: 1.0, blocks: 0.5 },
-    { player: "LeBron James",   points: 28.0, rebounds: 8.4, assists: 6.1,
+    { player: "Daugther",   points: 28.0, rebounds: 8.4, assists: 6.1,
       steals: 1.9, blocks: 0.8 },
-    { player: "Dwyane Wade",    points: 22.3, rebounds: 5.0, assists: 4.5,
+    { player: "Mom",    points: 22.3, rebounds: 5.0, assists: 4.5,
       steals: 1.7, blocks: 1.3 },
-    { player: "Mario Chalmers", points: 10.2, rebounds: 2.9, assists: 3.6,
+    { player: "Dad", points: 10.2, rebounds: 2.9, assists: 3.6,
       steals: 1.4, blocks: 0.2 }
 ];
 
@@ -39,25 +39,25 @@ var player_data = function(name) {
 };
 
 var labels = [
-    [0, "Points"],
-    [1, "Rebounds"],
-    [2, "Assists"],
-    [3, "Steals"],
-    [4, "Blocks"]
+    [0, "Happy"],
+    [1, "Sad"],
+    [2, "Scared"],
+    [3, "Angry"],
+    [4, "Normal"]
 ];
 
 window.onload = function () {
     Flotr.draw(document.getElementById("chart"),
         [
-            player_data("Chris Bosh"),
-            player_data("Shane Battier"),
-            player_data("LeBron James"),
-            player_data("Dwyane Wade"),
-            player_data("Mario Chalmers")
+            player_data("Dad"),
+            player_data("Mom"),
+            player_data("Son"),
+            player_data("Daugther"),
+            player_data("Grandpa")
         ],
         {
             title:
-                "2011/12 Miami Heat Starting Lineup — Contribution to Team Total",
+                "Family Emotion Analysis",
             radar: { show: true },
             grid: { circular: true, },
             xaxis: { ticks: labels, },

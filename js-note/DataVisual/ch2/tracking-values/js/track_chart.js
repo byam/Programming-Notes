@@ -9,42 +9,123 @@ var exports = [
     { label: "Sub-Saharan Africa",         data: [[1960,25.5082919987422],[1961,25.3967773829262],[1962,25.1513207204418],[1963,25.5604700351516],[1964,25.3764620706126],[1965,24.1720056044611],[1966,23.9473505637721],[1967,23.1708677868734],[1968,23.7006023135273],[1969,22.8548438248376],[1970,21.8363985230441],[1971,21.7465020197567],[1972,23.5933285153941],[1973,24.2284484067143],[1974,27.9894806993338],[1975,25.3782250522716],[1976,26.4445568645147],[1977,28.4323827652335],[1978,28.2407545259293],[1979,30.3521260132356],[1980,31.917317287295],[1981,26.5400231625996],[1982,24.7747478424802],[1983,23.8817206037714],[1984,25.2744113314672],[1985,28.2894089087691],[1986,27.3511102707732],[1987,28.0077656429154],[1988,26.4212638615689],[1989,26.7086793755833],[1990,26.3876153111575],[1991,24.1693577701585],[1992,25.0669216843661],[1993,26.1576055766999],[1994,27.9355565590642],[1995,27.8004944512353],[1996,29.8041432729699],[1997,28.7978103968031],[1998,27.5741510834576],[1999,28.2655108010711],[2000,32.5347628932871],[2001,31.9725896316694],[2002,32.1351335294832],[2003,31.1255948548804],[2004,31.2391270237925],[2005,32.80491104427],[2006,33.734986466356],[2007,34.6169758938263],[2008,36.8990503688163],[2009,29.8949887488995],[2010,31.412629197565],[2011,33.5660459229262]]}
 ];
 
-
-$.each(exports, function(idx, region) {
-    region.plot = $.plot(region.div, [region.data], {
-
-        series: {lines: {fill: true, lineWidth: 1}, shadowSize: 0},
-
-        xaxis: {show: false, min:1960, max: 2011},
-
-        yaxis: {show: false, min: 0, max: 60},
-
-        grid: {show: false},
+$.each(exports, function(idx,region) {
+    // each data for div
+    var div = $("<div>").css({
+        width: "600px",
+        height: "50px"
     });
+    $("#charts").append(div);
+
+    // ploting data
+    $.plot(
+        // html tag
+        div,
+
+        // data
+        [region.data],
+
+        // plot options
+        {
+            series: {
+                lines: {
+                    fill: true, lineWidth: 1
+                },
+                shadowSize: 0
+            },
+
+            xaxis:  {
+                show: true, labelHeight: 0,
+                min:1960, max: 2011,
+                tickFormatter: function() {return "";}
+            },
+
+            yaxis:  {
+                show: false, min: 0, max: 60
+            },
+
+            grid:   {
+                show: true, margin: 0, borderWidth: 0, borderColor: null,
+                margin: 0, labelMargin: 0, axisMargin: 0, minBorderMargin: 0,
+                hoverable: true, autoHighlight: false
+            },
+        }
+    );
+
+    // legend for each data
+    var legend = $("<p>").text(region.label).css({
+        'height': "17px",
+        'margin-bottom': "0",
+        'margin-left': "10px",
+        'margin-top':  "0",
+        'padding-top': "33px"
+    });
+    $("#chart-legends").append(legend);
+
+    // marker value
+    var value = $("<div>").css({
+        'position':  "absolute",
+        'top':       (div.position().top - 3) + "px",
+        'display':   "none",
+        'z-index':   1,
+        'font-size': "11px",
+        'color':     "black" // "#fc7d00"
+    });
+    region.value = value;
+    $("#chart-wrapper").append(value);
+});
+
+// dummy data for x-axis label value
+var dummy = []
+for (var i=1960; i<2012; i++) dummy.push([i, 0]);
+
+var div = $("<div>").css({
+    width: "600px",
+    height: "15px"
+});
+$("#charts").append(div);
+var dummyPlot = $.plot(div, [dummy], {
+    xaxis:  {show: true, labelHeight: 12, min:1960, max: 2011},
+    yaxis:  {show: false, min: 100, max: 200},
+    grid:   {show: true, margin: 0, borderWidth: 0, margin: 0, labelMargin: 0, axisMargin: 0, minBorderMargin: 0},
 });
 
 
+// mouse over event
+$("#charts").on("plothover", function(ev, pos) {
+    var year = Math.round(pos.x);
+    var left = dummyPlot.pointOffset(pos).left;
+    var height = $("#charts").height();
+    $("#marker").css({
+        'top':    0,
+        'left':   left,
+        'width':  "1px",
+        'height': height
+    }).show();
 
+    // show year's value
+    $.each(exports, function(idx, region) {
+        matched = $.grep(region.data, function(pt) { return pt[0] === year; });
+        if (matched.length > 0) {
+            region.value.text(year + ": " + Math.round(matched[0][1]) + "%");
+        } else {
+            region.value.text("");
+        }
+        region.value.css("left", (left+4)+"px").show();
+    });
 
+}).on("mouseout", function(ev) { // hide marker
+    if (ev.relatedTarget.id !== "marker") {
+        $("#marker").hide();
+        $.each(exports, function(idx, region) {
+            region.value.hide();
+        });
+    }
+});
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+$("#marker").on("mouseout", function(ev) {
+    $("#marker").hide();
+    $.each(exports, function(idx, region) {
+        region.value.hide();
+    });
+});

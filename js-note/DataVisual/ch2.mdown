@@ -301,6 +301,11 @@ This approach does have a significant limitation: it works only when the user ha
 
 #### Prepare the Data
 
+```html
+<!-- Our Chart comes here -->
+<div id='charts'></div>
+```
+
 ```js
 var exports = [
     { label: "East Asia & Pacific",
@@ -320,22 +325,278 @@ var exports = [
 ];
 ```
 
+#### Draw the Charts
+
+```js
+// create HTML divs
+$.each(exports, function(idx,region) {
+    var div = $("<div>").css({
+        width: "600px",
+        height: "60px"
+    });
+
+    region.div = div;
+    $("#charts").append(div);
+});
+
+// plot each divs
+$.each(exports, function(idx,region) {
+    region.plot = $.plot(
+        region.div,
+
+        [region.data],
+
+        {
+            series: {
+                lines: {fill: true, lineWidth: 1},
+                shadowSize: 0
+            },
+            xaxis: {show: false, min:1960, max: 2011},
+            yaxis: {show: false, min: 0, max: 60},
+            grid: {show: false},
+        }
+    );
+});
+```
+
+![track_chart1](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch2/tracking-values/images/track_chart1.png)
 
 
+* **series**
+
+    Tells Flot how we want it to graph the data series. In our case we want a line chart (which is the default type), but we want to fill the area from the line down to the x-axis, so we set fill to true. This option creates an area chart instead of a line chart. Because our charts are so short, an area chart will keep the data visible. For the same reason, we want the line itself to be as small as possible to match, so we set lineWidth to 1 (pixel), and we can dispense with shadows by setting shadowSize to 0.
+
+* **xaxis**
+
+    Defines the properties of the x-axis. We don’t want to include one on these charts, so we set show to false. We do, however, need to explicitly set the range of the axis. If we don’t, Flot will create one automatically, using the range of each series. Since our data doesn’t have consistent values for all years (the Middle East & North Africa data set, for example, doesn’t include data before 1968), we need to make Flot use the exact same x-axis range on all charts, so we specify a range from 1960 to 2011.
 
 
+* **yaxis**
+
+    Works much like the xaxis options. We don’t want to show one, but we do need to specify an explicit range so that all of the charts are consistent.
+
+* **grid**
+
+    Tells Flot how to add grid lines and checkmarks to the charts. For now, we don’t want anything extra, so we turn off the grid completely by setting show to false.
 
 
+## Decotration for the Chart
 
 
+**HTML**
+```html
+<div id="charts-wrapper">
+    <div id="charts" style="float:left;"></div>
+    <div id="legends" style="float:left;"></div>
+    <div style="clear:both;"></div>
+</div>
+```
+
+**Legends**
+```js
+// create legend for each chart
+$.each(exports, function(idx,region) {
+    var legend = $("<p>").text(region.label).css({
+        "height":        "17px",
+        "margin-bottom": "0",
+        "margin-left":   "10px",
+        "padding-top":   "33px"
+    });
+    $("#legends").append(legend);
+});
+```
+
+**Plot Options**
+```js
+// options
+{
+    series: {lines: {fill: true, lineWidth: 1}, shadowSize: 0},
+
+    xaxis: {
+        show: true, labelHeight: 0, min:1960, max: 2011,
+        tickFormatter: function() {return "";}
+    },
+
+    yaxis: {show: false, min: 0, max: 60},
+
+    grid: {
+        show: true, margin: 0, borderWidth: 0, margin: 0,
+        labelMargin: 0, axisMargin: 0, minBorderMargin: 0
+    },
+}
+```
+
+**X-axis label**
+```js
+// create x-axis labels on dummy data
+var dummyData = [];
+for (var yr=1960; yr<2012; yr++) dummyData.push([yr,0]);
+
+var dummyDiv = $("<div>").css({ width: "600px", height: "15px" });
+$("#charts").append(dummyDiv);
+
+var dummyPlot = $.plot(dummyDiv, [dummyData], {
+    xaxis: {show: true, labelHeight: 12, min:1960, max: 2011},
+    yaxis: {show: false, min: 100, max: 200},
+    grid: {
+        show: true, margin: 0, borderWidth: 0, margin: 0,
+        labelMargin: 0, axisMargin: 0, minBorderMargin: 0
+    },
+});
+```
+
+![track_chart2](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch2/tracking-values/images/track_chart2.png)
+
+## Implement the Interaction
+
+ The **plot()** function’s grid options include the **hoverable** property, which is set to **false** by default. If you set this property to **true**, Flot will trigger **plothover** events as the mouse moves over the chart area. It sends these events to the **`<div>`** that contains the chart. If there is code listening for those events, that code can respond to them.
+
+**Plot option's grid**
+```js
+grid: {
+    show: true, margin: 0, borderWidth: 0, margin: 0,
+    labelMargin: 0, axisMargin: 0, minBorderMargin: 0,
+    hoverable: true, autoHighlight: false
+    }
+```
 
 
+**HTML**
+```html
+    <!-- Our Chart comes here -->
+    <div id="chart-wrapper" style="position:relative;margin-left:20px;">
+        <div id='marker' style="position:absolute;z-index:1;display:none;width:1px;border-left: 1px solid black;"></div>
+        <div id='charts' style="float:left;"></div>
+        <div id='chart-legends' style="float:left;"></div>
+    </div>
+```
+
+When Flot calls the function listening for **plothover** events, it passes that function three parameters: the JavaScript event object, the position of the mouse expressed as x- and y-coordinates, and, if a chart data point is near the mouse, information about that data point.
 
 
+```js
+$.each(exports, function(idx,region) {
+    // each data for div
+    var div = $("<div>").css({
+        width: "600px",
+        height: "50px"
+    });
+    $("#charts").append(div);
+
+    // ploting data
+    $.plot(
+        // html tag
+        div,
+
+        // data
+        [region.data],
+
+        // plot options
+        {
+            series: {
+                lines: {
+                    fill: true, lineWidth: 1
+                },
+                shadowSize: 0
+            },
+
+            xaxis:  {
+                show: true, labelHeight: 0,
+                min:1960, max: 2011,
+                tickFormatter: function() {return "";}
+            },
+
+            yaxis:  {
+                show: false, min: 0, max: 60
+            },
+
+            grid:   {
+                show: true, margin: 0, borderWidth: 0, borderColor: null,
+                margin: 0, labelMargin: 0, axisMargin: 0, minBorderMargin: 0,
+                hoverable: true, autoHighlight: false
+            },
+        }
+    );
+
+    // legend for each data
+    var legend = $("<p>").text(region.label).css({
+        'height': "17px",
+        'margin-bottom': "0",
+        'margin-left': "10px",
+        'margin-top':  "0",
+        'padding-top': "33px"
+    });
+    $("#chart-legends").append(legend);
+
+    // marker value
+    var value = $("<div>").css({
+        'position':  "absolute",
+        'top':       (div.position().top - 3) + "px",
+        'display':   "none",
+        'z-index':   1,
+        'font-size': "11px",
+        'color':     "black" // "#fc7d00"
+    });
+    region.value = value;
+    $("#chart-wrapper").append(value);
+});
+
+// dummy data for x-axis label value
+var dummy = []
+for (var i=1960; i<2012; i++) dummy.push([i, 0]);
+
+var div = $("<div>").css({
+    width: "600px",
+    height: "15px"
+});
+$("#charts").append(div);
+var dummyPlot = $.plot(div, [dummy], {
+    xaxis:  {show: true, labelHeight: 12, min:1960, max: 2011},
+    yaxis:  {show: false, min: 100, max: 200},
+    grid:   {show: true, margin: 0, borderWidth: 0, margin: 0, labelMargin: 0, axisMargin: 0, minBorderMargin: 0},
+});
 
 
+// mouse over event
+$("#charts").on("plothover", function(ev, pos) {
+    var year = Math.round(pos.x);
+    var left = dummyPlot.pointOffset(pos).left;
+    var height = $("#charts").height();
+    $("#marker").css({
+        'top':    0,
+        'left':   left,
+        'width':  "1px",
+        'height': height
+    }).show();
 
+    $.each(exports, function(idx, region) {
+        matched = $.grep(region.data, function(pt) { return pt[0] === year; });
+        if (matched.length > 0) {
+            region.value.text(year + ": " + Math.round(matched[0][1]) + "%");
+        } else {
+            region.value.text("");
+        }
+        region.value.css("left", (left+4)+"px").show();
+    });
 
+}).on("mouseout", function(ev) {
+    if (ev.relatedTarget.id !== "marker") {
+        $("#marker").hide();
+        $.each(exports, function(idx, region) {
+            region.value.hide();
+        });
+    }
+});
+
+$("#marker").on("mouseout", function(ev) {
+    $("#marker").hide();
+    $.each(exports, function(idx, region) {
+        region.value.hide();
+    });
+});
+```
+
+![track_chart3](https://github.com/byam/Programming-Notes/blob/master/js-note/DataVisual/ch2/tracking-values/images/track_chart3.png)
 
 
 
