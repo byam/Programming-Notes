@@ -1,0 +1,109 @@
+
+---
+
+## Installation
+
+https://docs.docker.com/engine/installation/mac/
+
+---
+
+## Running Docker Container
+
+```sh
+# Create a new Docker VM
+$ docker-machine create --driver virtualbox default
+
+
+
+# List available machines
+$ docker-machine ls
+NAME      ACTIVE   URL          STATE     URL                         SWARM   DOCKER   ERRORS
+default   -        virtualbox   Running   tcp://192.168.99.100:2376           v1.9.1
+
+
+
+# Get the environment commands for new VM.
+$ docker-machine env default
+export DOCKER_TLS_VERIFY="1"
+export DOCKER_HOST="tcp://192.168.99.100:2376"
+export DOCKER_CERT_PATH="/Users/ganbaatarbyambasuren/.docker/machine/machines/default"
+export DOCKER_MACHINE_NAME="default"
+# Run this command to configure your shell:
+# eval $(docker-machine env default)
+
+
+
+# Connect your shell to the default machine
+$ eval "$(docker-machine env default)"
+
+
+
+# Run the hello-world container to verify your setup
+$ docker run hello-world
+
+Hello from Docker.
+This message shows that your installation appears to be working correctly.
+
+To generate this message, Docker took the following steps:
+ 1. The Docker client contacted the Docker daemon.
+ 2. The Docker daemon pulled the "hello-world" image from the Docker Hub.
+ 3. The Docker daemon created a new container from that image which runs the
+    executable that produces the output you are currently reading.
+ 4. The Docker daemon streamed that output to the Docker client, which sent it
+    to your terminal.
+
+To try something more ambitious, you can run an Ubuntu container with:
+ $ docker run -it ubuntu bash
+
+Share images, automate workflows, and more with a free Docker Hub account:
+ https://hub.docker.com
+
+For more examples and ideas, visit:
+ https://docs.docker.com/userguide/
+```
+
+---
+
+## Example of Docker on Mac OS X
+
+```sh
+# The ACTIVE machine, in this case default, is the one your environment is pointing to.
+$ docker-machine ls
+NAME      ACTIVE   URL          STATE     URL                         SWARM   DOCKER   ERRORS
+default   *        virtualbox   Running   tcp://192.168.99.100:2376           v1.9.1 
+```
+
+
+### Access container ports
+
+```sh
+# Start an NGINX container on the DOCKER_HOST
+$ docker run -d -P --name web nginx
+
+
+
+# Display your running container with docker ps command
+$ docker ps
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                                           NAMES
+9a4c97e95be8        nginx               "nginx -g 'daemon off"   4 minutes ago       Up 4 minutes        0.0.0.0:32769->80/tcp, 0.0.0.0:32768->443/tcp   web
+
+
+
+# view just container port
+$ docker port web
+443/tcp -> 0.0.0.0:32768
+80/tcp -> 0.0.0.0:32769
+
+
+
+# Get the address of the default VM.
+$ docker-machine ip default
+192.168.99.100
+```
+
+http://192.168.99.100:32769/
+
+```sh
+# stop container
+$ docker stop web
+```
