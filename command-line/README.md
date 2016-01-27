@@ -38,3 +38,6 @@ $ sysctl -n hw.ncpu
 ## show interl core model
 $ sysctl -n machdep.cpu.brand_string`
 ```
+
+
+

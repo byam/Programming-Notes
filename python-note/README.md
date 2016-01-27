@@ -26,3 +26,7 @@
 * [Mecab install in Python](https://github.com/byam/Byam-Programming-Notes/blob/master/python-note/Mecab)
 
 * [NumPy with Python](https://github.com/byam/Byam-Programming-Notes/blob/master/python-note/NumPy)
+
+* [NumPy with Python](https://github.com/byam/Byam-Programming-Notes/blob/master/python-note/NumPy)
+
+* [Plumbum with Python](https://github.com/byam/Byam-Programming-Notes/blob/master/python-note/Plumbum)
