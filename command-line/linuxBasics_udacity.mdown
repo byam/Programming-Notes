@@ -1,0 +1,220 @@
+# Linux Command Line Basics
+
+'d' : directory
+'-' : file
+
+```sh
+vagrant@vagrant-ubuntu-trusty-64:/home$ ls -al
+total 16
+drwxr-xr-x  4 root    root    4096 Apr  4 16:08 .
+drwxr-xr-x 23 root    root    4096 Apr  4 16:08 ..
+drwxr-xr-x  3 ubuntu  ubuntu  4096 Apr  4 16:08 ubuntu
+drwxr-xr-x  4 vagrant vagrant 4096 Apr  5 15:38 vagrant
+```
+
+
+### User, Super User
+
+```sh
+# Package Source Lists
+vagrant@vagrant-ubuntu-trusty-64:/$ cat /etc/apt/sources.list
+
+
+# Updating Available Package Lists
+vagrant@vagrant-ubuntu-trusty-64:/$ sudo apt-get update
+
+
+# Install package
+# Finger: user information lookup program
+vagrant@vagrant-ubuntu-trusty-64:/$ sudo apt-get install finger
+
+# show all users
+vagrant@vagrant-ubuntu-trusty-64:/$ finger
+Login     Name       Tty      Idle  Login Time   Office     Office Phone
+vagrant              pts/0          Apr  5 15:38 (10.0.2.2)
+
+# details of specific user
+vagrant@vagrant-ubuntu-trusty-64:/$ finger vagrant
+Login: vagrant                  Name:
+Directory: /home/vagrant                Shell: /bin/bash
+On since Tue Apr  5 15:38 (UTC) on pts/0 from 10.0.2.2
+   6 seconds idle
+No mail.
+No Plan.
+
+# more details of all users
+vagrant@vagrant-ubuntu-trusty-64:/$  cat /etc/passwd
+root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+bin:x:2:2:bin:/bin:/usr/sbin/nologin
+sys:x:3:3:sys:/dev:/usr/sbin/nologin
+sync:x:4:65534:sync:/bin:/bin/sync
+```
+
+* Create User
+```sh
+# create user
+vagrant@vagrant-ubuntu-trusty-64:/$ sudo adduser student
+
+# checl created user
+vagrant@vagrant-ubuntu-trusty-64:/$ finger student
+Login: student                  Name: Udacity Linux User
+Directory: /home/student                Shell: /bin/bash
+Never logged in.
+No mail.
+No Plan.
+```
+
+* Connect as created users
+```sh
+# connect as student user
+$ ssh student@127.0.0.1 -p 2222
+
+student@vagrant-ubuntu-trusty-64:~$ sudo cat /etc/passwd
+[sudo] password for student:
+student is not in the sudoers file.  This incident will be reported.
+```
+
+* sudoers
+```sh
+# show sudoers
+vagrant@vagrant-ubuntu-trusty-64:~$  sudo ls /etc/sudoers
+
+vagrant@vagrant-ubuntu-trusty-64:~$  sudo ls /etc/sudoers.d/
+90-cloud-init-users  README  vagrant
+```
+
+* give super user privilege
+```sh
+vagrant@vagrant-ubuntu-trusty-64:~$ sudo cp /etc/sudoers.d/vagrant /etc/sudoers.d/student
+vagrant@vagrant-ubuntu-trusty-64:~$ sudo nano /etc/sudoers.d/student
+CLOUD_IMG: This file was created/modified by the Cloud Image build process
+student ALL=(ALL) NOPASSWD:ALL
+
+# expire password and change new password
+vagrant@vagrant-ubuntu-trusty-64:~$ sudo passwd -e student
+```
+
+### Public, Private keys
+
+* Create private, public keys in local computer
+```sh
+$ ssh-keygen
+$ ls .ssh/UdacityLinuxCourse*
+.ssh/UdacityLinuxCourse     .ssh/UdacityLinuxCourse.pub
+```
+
+* Save public key on server
+```sh
+student@vagrant-ubuntu-trusty-64:~$ mkdir .ssh
+student@vagrant-ubuntu-trusty-64:~$ touch .ssh/authorized_keys
+student@vagrant-ubuntu-trusty-64:~$ nano .ssh/authorized_keys
+# copy and paste her *.pub key
+```
+
+* Set permission for key file
+```sh
+student@vagrant-ubuntu-trusty-64:~$ chmod 700 .ssh
+student@vagrant-ubuntu-trusty-64:~$ chmod 644 .ssh/authorized_keys
+```
+
+* Log in server using public/private keys
+```sh
+$ ssh student@127.0.0.1 -p 2222 -i ~/.ssh/UdacityLinuxCourse
+```
+
+
+### Forcing Key Based Authentication
+```sh
+# disable password authentication
+student@vagrant-ubuntu-trusty-64:~$ sudo nano /etc/ssh/sshd_config
+# Change to no to disable tunnelled clear text passwords
+PasswordAuthentication no
+
+# restart ssh service
+student@vagrant-ubuntu-trusty-64:~$ sudo service ssh restart
+```
+
+
+### File Permissions
+
+```sh
+student@vagrant-ubuntu-trusty-64:~$ ls -al
+total 32
+drwxr-xr-x 4 student student 4096 Apr  6 14:15 .
+drwxr-xr-x 5 root    root    4096 Apr  6 13:38 ..
+-rw------- 1 student student  151 Apr  6 14:37 .bash_history
+-rw-r--r-- 1 student student  220 Apr  6 13:38 .bash_logout
+-rw-r--r-- 1 student student 3637 Apr  6 13:38 .bashrc
+drwx------ 2 student student 4096 Apr  6 13:44 .cache
+-rw-rw-r-- 1 student student    0 Apr  6 13:44 .cloud-locale-test.skip
+-rw-r--r-- 1 student student  675 Apr  6 13:38 .profile
+drwx------ 2 student student 4096 Apr  6 14:16 .ssh
+student@vagrant-ubuntu-trusty-64:~$ ls .bashrc
+```
+
+Example
+`-rw-r--r--` means:
+    * '-': file ('d': directory)
+    * 'rw-': owner (read, write)
+    * 'r--': group (read)
+    * 'r--': everyone (read)
+
+### Octal Permissions
+
+* r = 4, w = 2, x = 1
+
+```sh
+# change mod
+$ sudo chmod root .bash_history
+
+# change owner
+$ sudo chown root .bash_history
+
+# change group
+$ sudo chgrp root .bash_history
+```
+
+
+### Firewall
+
+```sh
+# check firewall status
+student@vagrant-ubuntu-trusty-64:~$ sudo ufw status
+Status: inactive
+
+# change unix firewall
+student@vagrant-ubuntu-trusty-64:~$ sudo ufw default deny incoming
+student@vagrant-ubuntu-trusty-64:~$ sudo ufw default allow outgoing
+```
+
+* Allow ports
+```sh
+# allow ssh
+student@vagrant-ubuntu-trusty-64:~$ sudo ufw allow ssh
+
+# if using vagrant, 2222 set for ssh
+student@vagrant-ubuntu-trusty-64:~$ sudo ufw allow 2222/tcp
+
+# http server
+
+```
+
+
+* Enable ufw
+```sh
+student@vagrant-ubuntu-trusty-64:~$ sudo ufw enable
+Command may disrupt existing ssh connections. Proceed with operation (y|n)? y
+Firewall is active and enabled on system startup
+student@vagrant-ubuntu-trusty-64:~$ sudo ufw status
+Status: active
+
+To                         Action      From
+--                         ------      ----
+22                         ALLOW       Anywhere
+2222/tcp                   ALLOW       Anywhere
+80/tcp                     ALLOW       Anywhere
+22 (v6)                    ALLOW       Anywhere (v6)
+2222/tcp (v6)              ALLOW       Anywhere (v6)
+80/tcp (v6)                ALLOW       Anywhere (v6)
+```

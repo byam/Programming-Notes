@@ -40,4 +40,14 @@ $ sysctl -n machdep.cpu.brand_string`
 ```
 
 
+### Set Ubuntu Time Reset
+
+```sh
+# You can set the hardware clock with the command (for example)
+$ sudo hwclock --set --date="2012-12-15 20:49:00"
+
+# You then need to syncronise the system clock to the hardware clock:
+$ sudo hwclock -s
+```
+
 

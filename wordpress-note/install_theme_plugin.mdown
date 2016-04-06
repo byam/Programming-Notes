@@ -1,0 +1,250 @@
+## Failed to connect to FTP Server localhost:21
+
+Alhamdulillah, there is an easy way to solve this problem as I found it here (http://www.chrisabernethy.com/why-wordpress-asks-connection-info)
+
+* First, you need to know who user is running your webserver:
+Create a new blank file and paste this syntax in it.
+```
+<?php echo(exec("whoami")); ?>
+```
+Save the file in whatever title.
+
+* Make the identified user above own the wordpress directory. Log in as root in your command prompt. Then execute this command:
+```
+chown -R daemon YOUR_WORDPRESS_DIR
+```
+
+Finally, you can upload any themes into your webserver successfully.
+
+
+
+
+
+
+---
+
+### How To Find your Server's Public IP Address
+```sh
+$ ip addr show eth0 | grep inet | awk '{ print $2; }' | sed 's/\/.*$//'
+172.31.27.54
+fe80::443:25ff:fe92:7a01
+
+$ curl http://icanhazip.com
+54.92.75.228
+```
+
+
+---
+
+# How To Install Linux, Apache, MySQL, PHP (LAMP) stack on Ubuntu 14.04
+
+https://www.digitalocean.com/community/tutorials/how-to-install-linux-apache-mysql-php-lamp-stack-on-ubuntu-14-04
+
+### Install Apache
+```sh
+$ sudo apt-get update
+$ sudo apt-get install apache2
+```
+
+### Install MySQL
+```sh
+$ sudo apt-get install mysql-server php5-mysql
+```
+
+root password: "root"
+
+```sh
+$ sudo mysql_install_db
+
+$ sudo mysql_secure_installation
+```
+
+### Install PHP
+
+```sh
+$ sudo apt-get install php5 libapache2-mod-php5 php5-mcrypt
+```
+
+
+* Prefer `index.php` file
+
+```sh
+$ sudo nano /etc/apache2/mods-enabled/dir.conf
+# change like below
+<IfModule mod_dir.c>
+    DirectoryIndex index.php index.html index.cgi index.pl index.xhtml index.htm
+</IfModule>
+```
+
+* Install PHP Modules
+
+### Check LAMP
+```sh
+$ sudo nano /var/www/html/info.php
+<?php
+phpinfo();
+?>
+```
+
+Access: http://54.92.75.228/info.php
+
+
+---
+
+# How To Install Wordpress on Ubuntu 14.04
+
+https://www.digitalocean.com/community/tutorials/how-to-install-wordpress-on-ubuntu-14-04
+
+
+### Create a MySQL Database and User for WordPress
+
+```sh
+$ mysql -u root -p
+mysql> CREATE DATABASE wordpress;
+Query OK, 1 row affected (0.00 sec)
+
+mysql> CREATE USER wordpressuser@localhost IDENTIFIED BY 'password';
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> GRANT ALL PRIVILEGES ON wordpress.* TO wordpressuser@localhost;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> FLUSH PRIVILEGES;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> exit
+Bye
+```
+
+
+### Download WordPress
+
+```sh
+$ cd ~
+# download latest version
+$ wget http://wordpress.org/latest.tar.gz
+
+# extract file, creates wordpress folder
+$ tar xzvf latest.tar.gz
+```
+
+This will allow you to work with images and will also allow you to install plugins and update portions of your site using your SSH login credentials.
+
+```sh
+$ sudo apt-get update
+$ sudo apt-get install php5-gd libssh2-php
+```
+
+
+### Configure WordPress
+
+```sh
+$ cd ~/wordpress
+$ cp wp-config-sample.php wp-config.php
+$ nano wp-config.php
+// ** MySQL settings - You can get this info from your web host ** //
+/** The name of the database for WordPress */
+define('DB_NAME', 'wordpress');
+
+/** MySQL database username */
+define('DB_USER', 'wordpressuser');
+
+/** MySQL database password */
+define('DB_PASSWORD', 'password');
+```
+
+### Copy Files to the Document Root
+
+```sh
+$ sudo rsync -avP ~/wordpress/ /var/www/html/
+```
+
+The group ownership we will give to our web server process, which is www-data. This will allow Apache to interact with the content as necessary.
+
+```sh
+$ cd /var/www/html
+$ sudo chown -R ubuntu:www-data *
+```
+
+This will allow the web server to create files and directories under this directory, which will permit us to upload content to the server.
+
+```sh
+$ mkdir /var/www/html/wp-content/uploads
+$ sudo chown -R :www-data /var/www/html/wp-content/uploads
+```
+
+### Complete Installation through the Web Interface
+
+```
+Username: admin
+Password: )t4bS2LmF0Lb2)Mfq7
+```
+
+### Configure Pretty Permalinks for WordPress
+
+* Modifying Apache to Allow URL Rewrites
+```sh
+$ sudo nano /etc/apache2/sites-available/000-default.conf
+<VirtualHost *:80>
+    ServerAdmin webmaster@localhost
+    DocumentRoot /var/www/html
+    ServerName 54.92.75.228
+    <Directory /var/www/html/>
+        AllowOverride All
+    </Directory>
+    . . .
+
+```
+
+```sh
+$ sudo a2enmod rewrite
+$ sudo service apache2 restart
+```
+
+* Create an `.htaccess` File
+```sh
+$ touch /var/www/html/.htaccess
+$ sudo chown :www-data /var/www/html/.htaccess
+$ chmod 664 /var/www/html/.htaccess
+```
+
+
+
+```sh
+username: bya
+password: cM#1KqCnv%gd1pT&q85Ekdr*
+
+username: jaamaa
+password: Gy1(56Cagaej!tK(p%IOYh^b
+```
+
+
+---
+
+# How To Install and Secure phpMyAdmin on Ubuntu 14.04
+
+https://www.digitalocean.com/community/tutorials/how-to-install-and-secure-phpmyadmin-on-ubuntu-14-04
+
+### Install phpMyAdmin
+
+```sh
+$ sudo apt-get update
+$ sudo apt-get install phpmyadmin
+```
+
+MySQL application password for phpmyadmin: phpmyadminpassword
+
+```sh
+$ sudo php5enmod mcrypt
+$ sudo service apache2 restart
+```
+
+
+
+
+
+
+
+
+
+

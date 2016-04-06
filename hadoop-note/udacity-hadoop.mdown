@@ -1,0 +1,70 @@
+# Hadoop Demo
+
+```sh
+# put
+[training@localhost data]$ hadoop fs -put purchases.txt
+[training@localhost data]$ hadoop fs -ls
+Found 1 items
+-rw-r--r--   1 training supergroup  211312924 2016-04-03 16:19 purchases.txt
+```
+
+```sh
+# change name and remove
+[training@localhost data]$ hadoop fs -mv purchases.txt newname.txt
+[training@localhost data]$ hadoop fs -ls
+Found 1 items
+-rw-r--r--   1 training supergroup  211312924 2016-04-03 16:19 newname.txt
+
+[training@localhost data]$ hadoop fs -rm newname.txt
+Deleted newname.txt
+```
+
+```sh
+# mkdir and put data
+[training@localhost data]$ hadoop fs -mkdir myinput
+[training@localhost data]$ hadoop fs -ls
+Found 1 items
+drwxr-xr-x   - training supergroup          0 2016-04-03 16:23 myinput
+
+
+[training@localhost data]$ hadoop fs -put purchases.txt myinput
+[training@localhost data]$ hadoop fs -ls myinput
+Found 1 items
+-rw-r--r--   1 training supergroup  211312924 2016-04-03 16:24 myinput/purchases.txt
+```
+
+
+```sh
+# run hadoop
+
+[training@localhost code]$ hadoop jar /usr/lib/hadoop-0.20-mapreduce/contrib/streaming/hadoop-streaming-2.0.0-mr1-cdh4.1.1.jar -mapper mapper.py -reducer reducer.py -file mapper.py -file reducer.py -input myinput -output joboutput
+
+# after done
+[training@localhost code]$ hadoop fs -ls
+Found 2 items
+drwxr-xr-x   - training supergroup          0 2016-04-03 16:31 joboutput
+drwxr-xr-x   - training supergroup          0 2016-04-03 16:24 myinput
+[training@localhost code]$ hadoop fs -ls joboutput
+Found 3 items
+-rw-r--r--   1 training supergroup          0 2016-04-03 16:31 joboutput/_SUCCESS
+drwxr-xr-x   - training supergroup          0 2016-04-03 16:30 joboutput/_logs
+-rw-r--r--   1 training supergroup       2296 2016-04-03 16:31 joboutput/part-00000
+
+
+# result
+[training@localhost code]$ hadoop fs -cat joboutput/part-00000 | head
+Albuquerque     10052311.42
+Anaheim     10076416.36
+Anchorage   9933500.4
+Arlington   10072207.97
+Atlanta     9997146.7
+Aurora  9992970.92
+Austin  10057158.9
+Bakersfield     10031208.92
+Baltimore   10096521.45
+Baton Rouge     10131273.23
+```
+
+
+### Job Tracker 
+http://192.168.179.5:50030/jobtracker.jsp
